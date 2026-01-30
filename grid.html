@@ -2,19 +2,29 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>クロスワード自動補完（全通り修正版）</title>
+  <title>クロスワード自動補完</title>
   <style>
     body { font-family: sans-serif; margin: 20px; background: #f0f2f5; }
     h1 { color: #333; }
     
     .input-area { margin-bottom: 20px; }
+    .size-selector {
+      margin-bottom: 15px; padding: 10px; 
+      background: white; border-radius: 8px; 
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .size-selector label { font-weight: bold; margin-right: 10px; }
+    .size-selector select { 
+      padding: 5px 10px; font-size: 16px; 
+      border: 2px solid #0066cc; border-radius: 4px;
+    }
     .grid { 
       display: grid; 
-      grid-template-columns: repeat(5, 50px); 
       gap: 2px; 
       background: #333; 
       border: 2px solid #333;
       width: fit-content;
+      padding: 2px;
     }
     .grid input { 
       width: 50px; height: 50px; 
@@ -37,7 +47,6 @@
     }
     .mini-grid {
       display: grid;
-      grid-template-columns: repeat(5, 30px);
       gap: 1px;
       background: #ccc;
       margin-bottom: 10px;
@@ -78,11 +87,23 @@
 </head>
 <body>
 
-  <h1>クロスワード自動補完（全通り修正版）</h1>
-  <p>黒ますは0を入力</p>
+  <h1>クロスワード自動補完</h1>
+  <p>黒マスは半角0を入力</p>
   <a href="index.html" style="display: block; margin-bottom: 20px;">← 単語検索へ戻る</a>
 
   <div class="input-area">
+    <div class="size-selector">
+      <label>グリッドサイズ:</label>
+      <select id="gridSizeSelect" onchange="changeGridSize()">
+        <option value="2">2×2</option>
+        <option value="3">3×3</option>
+        <option value="4">4×4</option>
+        <option value="5" selected>5×5</option>
+        <option value="6">6×6</option>
+        <option value="7">7×7</option>
+        <option value="8">8×8</option>
+      </select>
+    </div>
     <div class="grid" id="grid"></div>
     <button onclick="solvePuzzle()">全組み合わせを検索</button>
     <button class="secondary" onclick="clearGrid()">クリア</button>
@@ -93,7 +114,7 @@
   <div class="solutions" id="solutionsContainer"></div>
 
   <script>
-    const GRID_SIZE = 5;
+    let GRID_SIZE = 5; // 動的サイズ
     let wordDictionary = {}; // { len: [ {word, c, score} ] }
     
     const SAMPLE_WORDS = [
@@ -108,9 +129,18 @@
       await loadCSV();
     });
 
+    function changeGridSize() {
+      GRID_SIZE = parseInt(document.getElementById('gridSizeSelect').value);
+      createGrid();
+      clearGrid();
+      logDebug(`グリッドサイズを ${GRID_SIZE}×${GRID_SIZE} に変更`);
+    }
+
     function createGrid() {
       const grid = document.getElementById('grid');
       grid.innerHTML = '';
+      grid.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 50px)`;
+      
       for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
         const input = document.createElement('input');
         input.maxLength = 1;
@@ -137,7 +167,7 @@
         if (!res.ok) throw new Error();
         const text = await res.text();
         processWords(parseCSV(text));
-        document.getElementById('status').textContent = '準備完了（全通り探索）';
+        document.getElementById('status').textContent = `準備完了（${GRID_SIZE}×${GRID_SIZE} 全通り探索）`;
       } catch (e) {
         console.warn('CSV読み込み失敗、サンプルデータ使用');
         processWords(SAMPLE_WORDS);
@@ -169,7 +199,7 @@
       }
     }
 
-    // --- 全通り探索版ソルバー（修正版） ---
+    // --- 全通り探索版ソルバー（動的サイズ対応） ---
     function solvePuzzle() {
       const inputs = document.querySelectorAll('#grid input');
       const gridState = Array.from(inputs).map(inp => {
@@ -203,7 +233,7 @@
       }
 
       // **デバッグ：各スロットの候補数**
-      logDebug(`スロット数: ${slots.length}`);
+      logDebug(`グリッド: ${GRID_SIZE}×${GRID_SIZE}, スロット数: ${slots.length}`);
       slotCandidates.forEach((slot, i) => {
         logDebug(`スロット${i+1} (${slot.type},長さ${slot.len}): ${slot.candidates.length}候補`);
       });
@@ -215,8 +245,8 @@
       // **探索完了後、頻度合計順でソート**
       solutions.sort((a, b) => b.totalScore - a.totalScore);
 
-      // ★修正：全結果を表示（上限1000件）
-      const MAX_DISPLAY = 1000;
+      // 表示上限（大きいグリッドでは制限強化）
+      const MAX_DISPLAY = GRID_SIZE <= 4 ? 1000 : GRID_SIZE <= 6 ? 500 : 100;
       const displaySolutions = solutions.slice(0, MAX_DISPLAY);
       
       logDebug(`総探索結果数: ${solutions.length}通り（表示: ${displaySolutions.length}件）`);
@@ -226,9 +256,10 @@
 
     // **全通り探索（デバッグ強化版）**
     function exploreAll(slotIdx, currentGrid, allSlots, results) {
-      // 探索上限（メモリ節約）
-      if (results.length >= 1000000) {
-        logDebug('探索上限に到達（1,000,000件）');
+      // 探索上限（大きいグリッドで制限強化）
+      const MAX_RESULTS = GRID_SIZE <= 4 ? 1000000 : GRID_SIZE <= 6 ? 500000 : 100000;
+      if (results.length >= MAX_RESULTS) {
+        logDebug(`探索上限に到達（${MAX_RESULTS}件）`);
         return;
       }
       
@@ -262,19 +293,21 @@
 
     function detectSlots(grid) {
       const slots = [];
+      // 横スロット
       for (let r = 0; r < GRID_SIZE; r++) {
         let len = 0, startC = 0;
         for (let c = 0; c <= GRID_SIZE; c++) {
-          if (c === GRID_SIZE || grid[r*5+c] === '#') {
+          if (c === GRID_SIZE || grid[r*GRID_SIZE+c] === '#') {
             if (len >= 2) slots.push({type:'row', r, c:startC, len});
             len = 0; startC = c + 1;
           } else len++;
         }
       }
+      // 縦スロット
       for (let c = 0; c < GRID_SIZE; c++) {
         let len = 0, startR = 0;
         for (let r = 0; r <= GRID_SIZE; r++) {
-          if (r === GRID_SIZE || grid[r*5+c] === '#') {
+          if (r === GRID_SIZE || grid[r*GRID_SIZE+c] === '#') {
             if (len >= 2) slots.push({type:'col', r:startR, c, len});
             len = 0; startR = r + 1;
           } else len++;
@@ -287,12 +320,12 @@
       let pat = '';
       if (slot.type === 'row') {
         for(let i=0; i<slot.len; i++) {
-          const char = currentGrid[slot.r*5 + (slot.c+i)];
+          const char = currentGrid[slot.r*GRID_SIZE + (slot.c+i)];
           pat += (char === null ? '＊' : char);
         }
       } else {
         for(let i=0; i<slot.len; i++) {
-          const char = currentGrid[(slot.r+i)*5 + slot.c];
+          const char = currentGrid[(slot.r+i)*GRID_SIZE + slot.c];
           pat += (char === null ? '＊' : char);
         }
       }
@@ -308,9 +341,9 @@
 
     function applyWordToGrid(grid, slot, word) {
       if (slot.type === 'row') {
-        for(let i=0; i<slot.len; i++) grid[slot.r*5 + (slot.c+i)] = word[i];
+        for(let i=0; i<slot.len; i++) grid[slot.r*GRID_SIZE + (slot.c+i)] = word[i];
       } else {
-        for(let i=0; i<slot.len; i++) grid[(slot.r+i)*5 + slot.c] = word[i];
+        for(let i=0; i<slot.len; i++) grid[(slot.r+i)*GRID_SIZE + slot.c] = word[i];
       }
     }
 
@@ -323,15 +356,14 @@
         return;
       }
       
-      // ★修正：正しく全結果数を表示
       document.getElementById('status').textContent = 
-        `${solutions.length}通りを表示`;
+        `${solutions.length}通りを表示（${GRID_SIZE}×${GRID_SIZE}）`;
 
       solutions.forEach((sol, index) => {
         const card = document.createElement('div');
         card.className = 'solution-card';
         
-        let gridHtml = '<div class="mini-grid">';
+        let gridHtml = `<div class="mini-grid" style="grid-template-columns: repeat(${GRID_SIZE}, 30px);">`;
         sol.grid.forEach(cell => {
           const cls = cell === '#' ? 'block' : '';
           gridHtml += `<div class="mini-cell ${cls}">${cell === '#' ? '' : cell}</div>`;
