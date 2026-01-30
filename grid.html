@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>クロスワード自動補完</title>
+  <title>クロスワード自動補完（全通り修正版）</title>
   <style>
     body { font-family: sans-serif; margin: 20px; background: #f0f2f5; }
     h1 { color: #333; }
@@ -64,11 +64,21 @@
     #status { margin-top: 10px; font-weight: bold; }
     .no-solution { color: #999; text-align: center; padding: 20px; }
     .searching { color: orange; }
+    
+    #debug { 
+      background: #f9f9f9; 
+      padding: 10px; 
+      border-radius: 4px; 
+      margin-top: 10px; 
+      font-size: 0.85em; 
+      max-height: 200px; 
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body>
 
-  <h1>クロスワード自動補完</h1>
+  <h1>クロスワード自動補完（全通り修正版）</h1>
   <p>黒ますは0を入力</p>
   <a href="index.html" style="display: block; margin-bottom: 20px;">← 単語検索へ戻る</a>
 
@@ -79,6 +89,7 @@
   </div>
 
   <div id="status">CSV読み込み中...</div>
+  <div id="debug"></div>
   <div class="solutions" id="solutionsContainer"></div>
 
   <script>
@@ -158,7 +169,7 @@
       }
     }
 
-    // --- 全通り探索版ソルバー ---
+    // --- 全通り探索版ソルバー（修正版） ---
     function solvePuzzle() {
       const inputs = document.querySelectorAll('#grid input');
       const gridState = Array.from(inputs).map(inp => {
@@ -176,6 +187,7 @@
 
       document.getElementById('status').innerHTML = '<span class="searching">全組み合わせを探索中...</span>';
       document.getElementById('solutionsContainer').innerHTML = '';
+      document.getElementById('debug').innerHTML = '';
 
       // スロット候補（出現回数順）
       const slotCandidates = slots.map(slot => {
@@ -190,6 +202,12 @@
         return;
       }
 
+      // **デバッグ：各スロットの候補数**
+      logDebug(`スロット数: ${slots.length}`);
+      slotCandidates.forEach((slot, i) => {
+        logDebug(`スロット${i+1} (${slot.type},長さ${slot.len}): ${slot.candidates.length}候補`);
+      });
+
       // **全通り探索**
       const solutions = [];
       exploreAll(0, gridState.slice(), slotCandidates, solutions);
@@ -197,12 +215,22 @@
       // **探索完了後、頻度合計順でソート**
       solutions.sort((a, b) => b.totalScore - a.totalScore);
 
-      renderSolutions(solutions.slice(0, 20), slots); // 上位20件のみ表示
+      // ★修正：全結果を表示（上限1000件）
+      const MAX_DISPLAY = 1000;
+      const displaySolutions = solutions.slice(0, MAX_DISPLAY);
+      
+      logDebug(`総探索結果数: ${solutions.length}通り（表示: ${displaySolutions.length}件）`);
+      
+      renderSolutions(displaySolutions, slots);
     }
 
-    // **全通り探索（出現回数順に試すが、全て網羅）**
+    // **全通り探索（デバッグ強化版）**
     function exploreAll(slotIdx, currentGrid, allSlots, results) {
-      if (results.length >= 100000) return; // 探索上限（メモリ節約）
+      // 探索上限（メモリ節約）
+      if (results.length >= 1000000) {
+        logDebug('探索上限に到達（1,000,000件）');
+        return;
+      }
       
       if (slotIdx >= allSlots.length) {
         // 全スロット埋まった → 頻度合計計算
@@ -221,7 +249,7 @@
       // **出現回数順に全候補を試行**
       const validCandidates = slot.candidates.filter(w => match(w.word, currentPattern));
       
-      for (let item of validCandidates) { // 出現回数順でループ
+      for (let item of validCandidates) {
         const nextGrid = currentGrid.slice();
         applyWordToGrid(nextGrid, slot, item.word);
         
@@ -232,7 +260,6 @@
       }
     }
 
-    // detectSlots, getPattern, match, applyWordToGrid は前回と同じ
     function detectSlots(grid) {
       const slots = [];
       for (let r = 0; r < GRID_SIZE; r++) {
@@ -296,9 +323,11 @@
         return;
       }
       
-      document.getElementById('status').textContent = `全${solutions.length}通り中、上位20件を表示（頻度合計順）`;
+      // ★修正：正しく全結果数を表示
+      document.getElementById('status').textContent = 
+        `${solutions.length}通りを表示`;
 
-      solutions.forEach(sol => {
+      solutions.forEach((sol, index) => {
         const card = document.createElement('div');
         card.className = 'solution-card';
         
@@ -329,7 +358,17 @@
         i.className = '';
       });
       document.getElementById('solutionsContainer').innerHTML = '';
+      document.getElementById('debug').innerHTML = '';
       document.getElementById('status').textContent = 'クリアしました';
+    }
+
+    // ★追加：デバッグログ機能
+    function logDebug(message) {
+      const debugDiv = document.getElementById('debug');
+      const time = new Date().toLocaleTimeString();
+      debugDiv.innerHTML += `<div>[${time}] ${message}</div>`;
+      debugDiv.scrollTop = debugDiv.scrollHeight;
+      console.log(message);
     }
   </script>
 </body>
