@@ -257,7 +257,7 @@
     // **全通り探索（デバッグ強化版）**
     function exploreAll(slotIdx, currentGrid, allSlots, results) {
       // 探索上限（大きいグリッドで制限強化）
-      const MAX_RESULTS = GRID_SIZE <= 4 ? 1000000 : GRID_SIZE <= 6 ? 500000 : 100000;
+      const MAX_RESULTS = GRID_SIZE <= 4 ? 100000 : GRID_SIZE <= 6 ? 50000 : 10000;
       if (results.length >= MAX_RESULTS) {
         logDebug(`探索上限に到達（${MAX_RESULTS}件）`);
         return;
@@ -405,3 +405,4 @@
   </script>
 </body>
 </html>
+
