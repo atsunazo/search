@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>クロスワード自動補完</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; background: #f0f2f5; }
+    h1 { color: #333; }
+    
+    .input-area { margin-bottom: 20px; }
+    .grid { 
+      display: grid; 
+      grid-template-columns: repeat(5, 50px); 
+      gap: 2px; 
+      background: #333; 
+      border: 2px solid #333;
+      width: fit-content;
+    }
+    .grid input { 
+      width: 50px; height: 50px; 
+      font-size: 24px; text-align: center; 
+      border: none; outline: none;
+      background: white; color: black;
+      padding: 0;
+    }
+    .grid input.block { background: #333; color: #333; }
+    .grid input.fixed { font-weight: bold; color: #0000cd; background: #e6f2ff; }
+
+    .solutions { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; }
+    .solution-card { 
+      background: white; 
+      padding: 15px; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+      border-left: 5px solid #0066cc;
+      min-width: 200px;
+    }
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 30px);
+      gap: 1px;
+      background: #ccc;
+      margin-bottom: 10px;
+    }
+    .mini-cell {
+      width: 30px; height: 30px;
+      background: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .mini-cell.block { background: #333; }
+    
+    .word-list { font-size: 0.9em; color: #555; line-height: 1.4; }
+    .score { font-size: 0.8em; color: #0066cc; font-weight: bold; }
+    
+    button {
+      margin-top: 10px; padding: 10px 20px; font-size: 16px;
+      background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer;
+    }
+    button:hover { background: #0055aa; }
+    button.secondary { background: #666; margin-left: 10px; }
+    button.secondary:hover { background: #555; }
+    
+    #status { margin-top: 10px; font-weight: bold; }
+    .no-solution { color: #999; text-align: center; padding: 20px; }
+    .searching { color: orange; }
+  </style>
+</head>
+<body>
+
+  <h1>クロスワード自動補完</h1>
+  <p>黒ますは0を入力</p>
+  <a href="index.html" style="display: block; margin-bottom: 20px;">← 単語検索へ戻る</a>
+
+  <div class="input-area">
+    <div class="grid" id="grid"></div>
+    <button onclick="solvePuzzle()">全組み合わせを検索</button>
+    <button class="secondary" onclick="clearGrid()">クリア</button>
+  </div>
+
+  <div id="status">CSV読み込み中...</div>
+  <div class="solutions" id="solutionsContainer"></div>
+
+  <script>
+    const GRID_SIZE = 5;
+    let wordDictionary = {}; // { len: [ {word, c, score} ] }
+    
+    const SAMPLE_WORDS = [
+      {word:'とまと', c:1000}, {word:'まり', c:800}, {word:'とりご', c:500},
+      {word:'あさご', c:300}, {word:'さしす', c:200}, {word:'かきく', c:150},
+      {word:'しんぶん', c:120}, {word:'あかり', c:90}, {word:'まつり', c:80},
+      {word:'なにぬ', c:70}, {word:'たてよこ', c:60}, {word:'あい', c:400}, {word:'さか', c:350}
+    ];
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      createGrid();
+      await loadCSV();
+    });
+
+    function createGrid() {
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+      for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+        const input = document.createElement('input');
+        input.maxLength = 1;
+        input.dataset.idx = i;
+        input.addEventListener('input', (e) => {
+          if (e.target.value === '0') {
+            e.target.classList.add('block');
+          } else {
+            e.target.classList.remove('block');
+            if (e.target.value !== '' && e.target.value !== '＊') {
+              e.target.classList.add('fixed');
+            } else {
+              e.target.classList.remove('fixed');
+            }
+          }
+        });
+        grid.appendChild(input);
+      }
+    }
+
+    async function loadCSV() {
+      try {
+        const res = await fetch('日本語一覧.csv');
+        if (!res.ok) throw new Error();
+        const text = await res.text();
+        processWords(parseCSV(text));
+        document.getElementById('status').textContent = '準備完了（全通り探索）';
+      } catch (e) {
+        console.warn('CSV読み込み失敗、サンプルデータ使用');
+        processWords(SAMPLE_WORDS);
+        document.getElementById('status').textContent = 'サンプルモード';
+      }
+    }
+
+    function parseCSV(text) {
+      const lines = text.split(/\r?\n/);
+      const h = lines[0].split(',');
+      const wIdx = h.indexOf('単語');
+      const cIdx = h.indexOf('出現回数');
+      return lines.slice(1).filter(l=>l.trim()).map(l => {
+        const c = l.split(',');
+        return { word: c[wIdx]?.trim(), c: parseInt(c[cIdx]||0) };
+      }).filter(x => x.word && x.word.length >= 2);
+    }
+
+    function processWords(list) {
+      wordDictionary = {};
+      list.forEach(item => {
+        const len = item.word.length;
+        if (!wordDictionary[len]) wordDictionary[len] = [];
+        wordDictionary[len].push({ ...item, score: item.c });
+      });
+      // 出現回数順にソート（降順）
+      for (let len in wordDictionary) {
+        wordDictionary[len].sort((a, b) => b.score - a.score);
+      }
+    }
+
+    // --- 全通り探索版ソルバー ---
+    function solvePuzzle() {
+      const inputs = document.querySelectorAll('#grid input');
+      const gridState = Array.from(inputs).map(inp => {
+        const v = inp.value.trim();
+        if (v === '0') return '#';
+        if (v === '' || v === '＊') return null;
+        return v;
+      });
+
+      const slots = detectSlots(gridState);
+      if (slots.length === 0) {
+        document.getElementById('status').textContent = '単語が入る場所（2文字以上）がありません';
+        return;
+      }
+
+      document.getElementById('status').innerHTML = '<span class="searching">全組み合わせを探索中...</span>';
+      document.getElementById('solutionsContainer').innerHTML = '';
+
+      // スロット候補（出現回数順）
+      const slotCandidates = slots.map(slot => {
+        const pattern = getPattern(gridState, slot);
+        const candidates = (wordDictionary[slot.len] || [])
+          .filter(w => match(w.word, pattern));
+        return { ...slot, candidates, assigned: null };
+      });
+
+      if (slotCandidates.some(s => s.candidates.length === 0)) {
+        document.getElementById('status').textContent = '候補が見つからない箇所があります';
+        return;
+      }
+
+      // **全通り探索**
+      const solutions = [];
+      exploreAll(0, gridState.slice(), slotCandidates, solutions);
+
+      // **探索完了後、頻度合計順でソート**
+      solutions.sort((a, b) => b.totalScore - a.totalScore);
+
+      renderSolutions(solutions.slice(0, 20), slots); // 上位20件のみ表示
+    }
+
+    // **全通り探索（出現回数順に試すが、全て網羅）**
+    function exploreAll(slotIdx, currentGrid, allSlots, results) {
+      if (results.length >= 100000) return; // 探索上限（メモリ節約）
+      
+      if (slotIdx >= allSlots.length) {
+        // 全スロット埋まった → 頻度合計計算
+        const totalScore = allSlots.reduce((sum, s) => sum + (s.assigned?.score || 0), 0);
+        results.push({ 
+          grid: currentGrid.slice(), 
+          words: allSlots.map(s => s.assigned),
+          totalScore 
+        });
+        return;
+      }
+
+      const slot = allSlots[slotIdx];
+      const currentPattern = getPattern(currentGrid, slot);
+      
+      // **出現回数順に全候補を試行**
+      const validCandidates = slot.candidates.filter(w => match(w.word, currentPattern));
+      
+      for (let item of validCandidates) { // 出現回数順でループ
+        const nextGrid = currentGrid.slice();
+        applyWordToGrid(nextGrid, slot, item.word);
+        
+        slot.assigned = item;
+        exploreAll(slotIdx + 1, nextGrid, allSlots, results);
+        
+        slot.assigned = null;
+      }
+    }
+
+    // detectSlots, getPattern, match, applyWordToGrid は前回と同じ
+    function detectSlots(grid) {
+      const slots = [];
+      for (let r = 0; r < GRID_SIZE; r++) {
+        let len = 0, startC = 0;
+        for (let c = 0; c <= GRID_SIZE; c++) {
+          if (c === GRID_SIZE || grid[r*5+c] === '#') {
+            if (len >= 2) slots.push({type:'row', r, c:startC, len});
+            len = 0; startC = c + 1;
+          } else len++;
+        }
+      }
+      for (let c = 0; c < GRID_SIZE; c++) {
+        let len = 0, startR = 0;
+        for (let r = 0; r <= GRID_SIZE; r++) {
+          if (r === GRID_SIZE || grid[r*5+c] === '#') {
+            if (len >= 2) slots.push({type:'col', r:startR, c, len});
+            len = 0; startR = r + 1;
+          } else len++;
+        }
+      }
+      return slots;
+    }
+
+    function getPattern(currentGrid, slot) {
+      let pat = '';
+      if (slot.type === 'row') {
+        for(let i=0; i<slot.len; i++) {
+          const char = currentGrid[slot.r*5 + (slot.c+i)];
+          pat += (char === null ? '＊' : char);
+        }
+      } else {
+        for(let i=0; i<slot.len; i++) {
+          const char = currentGrid[(slot.r+i)*5 + slot.c];
+          pat += (char === null ? '＊' : char);
+        }
+      }
+      return pat;
+    }
+
+    function match(word, pattern) {
+      for(let i=0; i<word.length; i++) {
+        if (pattern[i] !== '＊' && pattern[i] !== word[i]) return false;
+      }
+      return true;
+    }
+
+    function applyWordToGrid(grid, slot, word) {
+      if (slot.type === 'row') {
+        for(let i=0; i<slot.len; i++) grid[slot.r*5 + (slot.c+i)] = word[i];
+      } else {
+        for(let i=0; i<slot.len; i++) grid[(slot.r+i)*5 + slot.c] = word[i];
+      }
+    }
+
+    function renderSolutions(solutions, slots) {
+      const container = document.getElementById('solutionsContainer');
+      container.innerHTML = '';
+      
+      if (solutions.length === 0) {
+        container.innerHTML = '<div class="no-solution">条件を満たす組み合わせが見つかりませんでした</div>';
+        return;
+      }
+      
+      document.getElementById('status').textContent = `全${solutions.length}通り中、上位20件を表示（頻度合計順）`;
+
+      solutions.forEach(sol => {
+        const card = document.createElement('div');
+        card.className = 'solution-card';
+        
+        let gridHtml = '<div class="mini-grid">';
+        sol.grid.forEach(cell => {
+          const cls = cell === '#' ? 'block' : '';
+          gridHtml += `<div class="mini-cell ${cls}">${cell === '#' ? '' : cell}</div>`;
+        });
+        gridHtml += '</div>';
+
+        let wordHtml = '<div class="word-list">';
+        sol.words.forEach((w, i) => {
+          const s = slots[i];
+          const type = s.type === 'row' ? '横' : '縦';
+          wordHtml += `<div>[${type}] ${w.word} <span class="score">(${w.c})</span></div>`;
+        });
+        wordHtml += `<div style="margin-top: 5px; font-weight: bold;">合計頻度: <span class="score">${sol.totalScore}</span></div>`;
+        wordHtml += '</div>';
+
+        card.innerHTML = gridHtml + wordHtml;
+        container.appendChild(card);
+      });
+    }
+
+    function clearGrid() {
+      document.querySelectorAll('#grid input').forEach(i => {
+        i.value = '';
+        i.className = '';
+      });
+      document.getElementById('solutionsContainer').innerHTML = '';
+      document.getElementById('status').textContent = 'クリアしました';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>日本語一覧 検索</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    input[type="text"] { width: 300px; font-size: 16px; padding: 4px; }
+    table { border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 4px 8px; }
+    th { background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>日本語一覧 検索</h1>
+
+  <div>
+    <label for="searchInput">検索（ひらがな＋＊）:</label>
+    <input type="text" id="searchInput" placeholder="例: りんご, り＊ご, りんご＊, りんご＊＊">
+  </div>
+
+  <div id="status"></div>
+
+  <table id="resultTable">
+    <thead>
+      <tr>
+        <th>単語</th>
+        <th>出現回数</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    // CSV データ格納用
+    let wordData = [];
+
+    // ページ読み込み時に CSV を読み込む
+    window.addEventListener('DOMContentLoaded', () => {
+      // 同じフォルダ内の「日本語一覧.csv」を取得
+      fetch('日本語一覧.csv')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('CSV を読み込めませんでした: ' + response.status);
+          }
+          return response.text();
+        })
+        .then(text => {
+          wordData = parseCSV(text);
+          document.getElementById('status').textContent = '単語数: ' + wordData.length;
+        })
+        .catch(err => {
+          document.getElementById('status').textContent = '読み込みエラー: ' + err.message;
+        });
+
+      document.getElementById('searchInput').addEventListener('input', onSearch);
+    });
+
+    // 単純な CSV パーサ（カンマ区切り、ヘッダありを想定）
+    function parseCSV(text) {
+      const lines = text.trim().split(/\r?\n/);
+      if (lines.length < 2) return [];
+
+      // 先頭行はヘッダ: 単語,出現回数 を想定
+      const header = lines[0].split(',');
+      const wordIndex = header.indexOf('単語');
+      const countIndex = header.indexOf('出現回数');
+
+      const result = [];
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const cols = lines[i].split(',');
+        const word = cols[wordIndex] || '';
+        const count = cols[countIndex] || '0';
+        result.push({ word, count });
+      }
+      return result;
+    }
+
+    // 検索入力時の処理
+    function onSearch() {
+      const query = document.getElementById('searchInput').value.trim();
+      const tbody = document.querySelector('#resultTable tbody');
+      tbody.innerHTML = '';
+
+      if (!query) return;
+
+      // ワイルドカード仕様:
+      // ・「＊」は任意1文字
+      // ・「＊」の個数をそのまま文字数に反映
+      // ・他はひらがなとし、完全一致
+      const results = wordData.filter(item => matchPattern(item.word, query));
+
+      for (const item of results) {
+        const tr = document.createElement('tr');
+        const tdWord = document.createElement('td');
+        const tdCount = document.createElement('td');
+        tdWord.textContent = item.word;
+        tdCount.textContent = item.count;
+        tr.appendChild(tdWord);
+        tr.appendChild(tdCount);
+        tbody.appendChild(tr);
+      }
+    }
+
+    // パターンマッチ:
+    // pattern: ひらがな＋「＊」（任意1文字）で構成されると想定
+    // word   : CSV の「単語」
+    function matchPattern(word, pattern) {
+      // 文字数が違う場合は即不一致
+      if (word.length !== pattern.length) return false;
+
+      for (let i = 0; i < pattern.length; i++) {
+        const p = pattern[i];
+        const w = word[i];
+        if (p === '＊') {
+          // 任意1文字にマッチ
+          continue;
+        }
+        if (p !== w) {
+          return false;
+        }
+      }
+      return true;
+    }
+  </script>
+  <hr>
+  <div>
+    <a href="grid.html">5x5グリッド検索へ移動</a>
+  </div>
+</body>
+</html>
