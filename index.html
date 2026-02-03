@@ -43,7 +43,7 @@
     // ページ読み込み時に CSV を読み込む
     window.addEventListener('DOMContentLoaded', () => {
       // 同じフォルダ内の「日本語一覧.csv」を取得
-      fetch('日本語一覧.csv')
+      fetch('日本語一覧new.csv')
         .then(response => {
           if (!response.ok) {
             throw new Error('CSV を読み込めませんでした: ' + response.status);
@@ -224,3 +224,4 @@
   </div>
 </body>
 </html>
+
