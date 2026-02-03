@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>クロスワード自動補完</title>
+  <title>自動補完</title>
   <style>
     body { font-family: sans-serif; margin: 20px; background: #f0f2f5; }
     h1 { color: #333; }
@@ -88,7 +88,7 @@
 <body>
 
   <h1>クロスワード自動補完</h1>
-  <p>黒マスは半角0を入力</p>
+  <p>黒マスは半角0を入力（数字1〜9は「同じ数字＝同じ文字」のワイルドカードとして利用可能）</p>
   <a href="index.html" style="display: block; margin-bottom: 20px;">← 単語検索へ戻る</a>
 
   <div class="input-area">
@@ -146,11 +146,13 @@
         input.maxLength = 1;
         input.dataset.idx = i;
         input.addEventListener('input', (e) => {
-          if (e.target.value === '0') {
+          const v = e.target.value;
+          if (v === '0') {
             e.target.classList.add('block');
+            e.target.classList.remove('fixed');
           } else {
             e.target.classList.remove('block');
-            if (e.target.value !== '' && e.target.value !== '＊') {
+            if (v !== '' && v !== '＊') {
               e.target.classList.add('fixed');
             } else {
               e.target.classList.remove('fixed');
@@ -232,20 +234,20 @@
         return;
       }
 
-      // **デバッグ：各スロットの候補数**
+      // デバッグ：各スロットの候補数
       logDebug(`グリッド: ${GRID_SIZE}×${GRID_SIZE}, スロット数: ${slots.length}`);
       slotCandidates.forEach((slot, i) => {
         logDebug(`スロット${i+1} (${slot.type},長さ${slot.len}): ${slot.candidates.length}候補`);
       });
 
-      // **全通り探索**
+      // 全通り探索
       const solutions = [];
       exploreAll(0, gridState.slice(), slotCandidates, solutions);
 
-      // **探索完了後、頻度合計順でソート**
+      // 探索完了後、頻度合計順でソート
       solutions.sort((a, b) => b.totalScore - a.totalScore);
 
-      // 表示上限（大きいグリッドでは制限強化）
+      // 表示上限
       const MAX_DISPLAY = GRID_SIZE <= 4 ? 1000 : GRID_SIZE <= 6 ? 500 : 100;
       const displaySolutions = solutions.slice(0, MAX_DISPLAY);
       
@@ -254,9 +256,8 @@
       renderSolutions(displaySolutions, slots);
     }
 
-    // **全通り探索（デバッグ強化版）**
+    // 全通り探索
     function exploreAll(slotIdx, currentGrid, allSlots, results) {
-      // 探索上限（大きいグリッドで制限強化）
       const MAX_RESULTS = GRID_SIZE <= 4 ? 100000 : GRID_SIZE <= 6 ? 50000 : 10000;
       if (results.length >= MAX_RESULTS) {
         logDebug(`探索上限に到達（${MAX_RESULTS}件）`);
@@ -264,7 +265,6 @@
       }
       
       if (slotIdx >= allSlots.length) {
-        // 全スロット埋まった → 頻度合計計算
         const totalScore = allSlots.reduce((sum, s) => sum + (s.assigned?.score || 0), 0);
         results.push({ 
           grid: currentGrid.slice(), 
@@ -277,7 +277,6 @@
       const slot = allSlots[slotIdx];
       const currentPattern = getPattern(currentGrid, slot);
       
-      // **出現回数順に全候補を試行**
       const validCandidates = slot.candidates.filter(w => match(w.word, currentPattern));
       
       for (let item of validCandidates) {
@@ -332,9 +331,35 @@
       return pat;
     }
 
+    // ★ 数字1〜9対応版マッチ関数
+    // pattern: ひらがな + 「＊」 + 数字1〜9
+    // word   : 実際の単語
     function match(word, pattern) {
-      for(let i=0; i<word.length; i++) {
-        if (pattern[i] !== '＊' && pattern[i] !== word[i]) return false;
+      if (word.length !== pattern.length) return false;
+
+      const digitMap = {}; // '1' -> 'か' など
+
+      for (let i = 0; i < pattern.length; i++) {
+        const p = pattern[i];
+        const w = word[i];
+
+        if (p === '＊') {
+          // 任意1文字
+          continue;
+        }
+
+        if (p >= '1' && p <= '9') {
+          // 数字は「同じ数字なら同じ文字」
+          if (digitMap[p] === undefined) {
+            digitMap[p] = w;
+          } else {
+            if (digitMap[p] !== w) return false;
+          }
+          continue;
+        }
+
+        // 通常文字は完全一致
+        if (p !== w) return false;
       }
       return true;
     }
@@ -394,7 +419,7 @@
       document.getElementById('status').textContent = 'クリアしました';
     }
 
-    // ★追加：デバッグログ機能
+    // デバッグログ機能
     function logDebug(message) {
       const debugDiv = document.getElementById('debug');
       const time = new Date().toLocaleTimeString();
@@ -405,4 +430,3 @@
   </script>
 </body>
 </html>
-
