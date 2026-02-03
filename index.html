@@ -15,8 +15,8 @@
   <h1>日本語一覧 検索</h1>
 
   <div>
-    <label for="searchInput">検索（ひらがな＋＊）:</label>
-    <input type="text" id="searchInput" placeholder="例: りんご, り＊ご, りんご＊, りんご＊＊">
+    <label for="searchInput">検索（ひらがな＋＊＋数字1〜9）:</label>
+    <input type="text" id="searchInput" placeholder="例: りんご, り＊ご, １い１, か１１１き, １２１２">
   </div>
 
   <div id="status"></div>
@@ -87,7 +87,7 @@
 
       // ワイルドカード仕様:
       // ・「＊」は任意1文字
-      // ・「＊」の個数をそのまま文字数に反映
+      // ・数字1〜9は任意1文字だが、同じ数字には同じ文字が入る
       // ・他はひらがなとし、完全一致
       const results = wordData.filter(item => matchPattern(item.word, query));
 
@@ -104,19 +104,39 @@
     }
 
     // パターンマッチ:
-    // pattern: ひらがな＋「＊」（任意1文字）で構成されると想定
+    // pattern: ひらがな＋「＊」＋数字1〜9 で構成
     // word   : CSV の「単語」
     function matchPattern(word, pattern) {
       // 文字数が違う場合は即不一致
       if (word.length !== pattern.length) return false;
 
+      // 数字ごとに「どの文字に対応したか」を記録するマップ
+      const digitMap = {}; // 例: { '1': 'か', '2': 'し' }
+
       for (let i = 0; i < pattern.length; i++) {
         const p = pattern[i];
         const w = word[i];
+
         if (p === '＊') {
           // 任意1文字にマッチ
           continue;
         }
+
+        if (p >= '1' && p <= '9') {
+          // 数字の場合：同じ数字には同じ文字が入る
+          if (digitMap[p] === undefined) {
+            // まだ割り当てられていなければこの文字を割り当て
+            digitMap[p] = w;
+          } else {
+            // すでに割り当てがあり、それと違う文字なら不一致
+            if (digitMap[p] !== w) {
+              return false;
+            }
+          }
+          continue;
+        }
+
+        // ひらがななど、通常の完全一致
         if (p !== w) {
           return false;
         }
@@ -124,6 +144,7 @@
       return true;
     }
   </script>
+
   <hr>
   <div>
     <a href="grid.html">5x5グリッド検索へ移動</a>
