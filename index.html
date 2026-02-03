@@ -7,8 +7,10 @@
     body { font-family: sans-serif; margin: 20px; }
     input[type="text"] { width: 300px; font-size: 16px; padding: 4px; }
     table { border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 4px 8px; }
+    th, td { border: 1px solid #ccc; padding: 4px 8px; cursor: pointer; user-select: none; }
     th { background: #f0f0f0; }
+    th.asc::after { content: " ↑"; }
+    th.desc::after { content: " ↓"; }
   </style>
 </head>
 <body>
@@ -24,8 +26,8 @@
   <table id="resultTable">
     <thead>
       <tr>
-        <th>単語</th>
-        <th>出現回数</th>
+        <th data-sort="word">単語</th>
+        <th data-sort="count">出現回数</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -34,6 +36,9 @@
   <script>
     // CSV データ格納用
     let wordData = [];
+    let currentResults = []; // 検索結果を保持
+    let sortColumn = null;
+    let sortDirection = 'asc';
 
     // ページ読み込み時に CSV を読み込む
     window.addEventListener('DOMContentLoaded', () => {
@@ -54,6 +59,11 @@
         });
 
       document.getElementById('searchInput').addEventListener('input', onSearch);
+      
+      // ソート機能の初期化
+      document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', onSort);
+      });
     });
 
     // 単純な CSV パーサ（カンマ区切り、ヘッダありを想定）
@@ -72,7 +82,7 @@
         const cols = lines[i].split(',');
         const word = cols[wordIndex] || '';
         const count = cols[countIndex] || '0';
-        result.push({ word, count });
+        result.push({ word, count: parseInt(count) || 0 });
       }
       return result;
     }
@@ -83,15 +93,65 @@
       const tbody = document.querySelector('#resultTable tbody');
       tbody.innerHTML = '';
 
-      if (!query) return;
+      if (!query) {
+        currentResults = [];
+        updateSortIndicators();
+        return;
+      }
 
       // ワイルドカード仕様:
       // ・「＊」は任意1文字
       // ・数字1〜9は任意1文字だが、同じ数字には同じ文字が入る
       // ・他はひらがなとし、完全一致
-      const results = wordData.filter(item => matchPattern(item.word, query));
+      currentResults = wordData.filter(item => matchPattern(item.word, query));
+      
+      // 現在のソート状態を維持してソート
+      if (sortColumn) {
+        sortResults(sortColumn, sortDirection);
+      }
+      
+      displayResults();
+    }
 
-      for (const item of results) {
+    // ソート機能
+    function onSort(event) {
+      const column = event.currentTarget.dataset.sort;
+      if (sortColumn === column) {
+        // 同じ列をクリック：方向反転
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        // 新しい列：昇順で開始
+        sortColumn = column;
+        sortDirection = 'asc';
+      }
+      
+      sortResults(sortColumn, sortDirection);
+      displayResults();
+      updateSortIndicators();
+    }
+
+    function sortResults(column, direction) {
+      currentResults.sort((a, b) => {
+        let aVal, bVal;
+        if (column === 'word') {
+          aVal = a.word;
+          bVal = b.word;
+        } else {
+          aVal = a.count;
+          bVal = b.count;
+        }
+        
+        if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    function displayResults() {
+      const tbody = document.querySelector('#resultTable tbody');
+      tbody.innerHTML = '';
+      
+      for (const item of currentResults) {
         const tr = document.createElement('tr');
         const tdWord = document.createElement('td');
         const tdCount = document.createElement('td');
@@ -100,6 +160,19 @@
         tr.appendChild(tdWord);
         tr.appendChild(tdCount);
         tbody.appendChild(tr);
+      }
+    }
+
+    function updateSortIndicators() {
+      document.querySelectorAll('th').forEach(th => {
+        th.classList.remove('asc', 'desc');
+      });
+      
+      if (sortColumn) {
+        const activeTh = document.querySelector(`th[data-sort="${sortColumn}"]`);
+        if (activeTh) {
+          activeTh.classList.add(sortDirection);
+        }
       }
     }
 
