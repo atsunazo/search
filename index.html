@@ -109,7 +109,7 @@
 
     // 単純な CSV パーサ（カンマ区切り、ヘッダありを想定）
     function parseCSV(text) {
-      const lines = text.trim().split(/\\r?\\n/);
+      const lines = text.trim().split(/\r?\n/);
       if (lines.length < 2) return [];
 
       // 先頭行はヘッダ: 単語,出現回数 を想定
@@ -265,3 +265,4 @@
   </div>
 </body>
 </html>
+
