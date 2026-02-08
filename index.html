@@ -2,21 +2,104 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>日本語一覧 検索</title>
   <style>
-    body { font-family: sans-serif; margin: 20px; }
-    input[type="text"] { width: 300px; font-size: 16px; padding: 4px; }
-    table { border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 4px 8px; cursor: pointer; user-select: none; }
-    th { background: #f0f0f0; }
+    * {
+      box-sizing: border-box;
+    }
+    body { 
+      font-family: sans-serif; 
+      margin: 10px; 
+      padding: 0;
+      -webkit-text-size-adjust: 100%;
+    }
+    h1 {
+      font-size: 1.5em;
+      margin: 10px 0;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 16px;
+    }
+    input[type="text"] { 
+      width: 100%;
+      max-width: 100%;
+      font-size: 16px;
+      padding: 12px;
+      height: 48px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    #status {
+      margin: 10px 0;
+      font-size: 14px;
+    }
+    table { 
+      border-collapse: collapse; 
+      margin-top: 10px;
+      width: 100%;
+      font-size: 14px;
+    }
+    th, td { 
+      border: 1px solid #ccc; 
+      padding: 8px 6px;
+      cursor: pointer; 
+      user-select: none;
+      text-align: left;
+    }
+    th { 
+      background: #f0f0f0;
+      position: sticky;
+      top: 0;
+      font-size: 14px;
+      min-height: 48px;
+    }
     th.asc::after { content: " ↑"; }
     th.desc::after { content: " ↓"; }
-      #searchInput {
-      font-size: 1em;
-      width: 30%;
-      padding: 0.8em;
-      height: 40px;
-      box-sizing: border-box;
+    
+    /* タップしやすいセルサイズ */
+    td {
+      min-height: 44px;
+    }
+    
+    hr {
+      margin: 20px 0;
+    }
+    
+    a {
+      display: inline-block;
+      padding: 10px;
+      font-size: 16px;
+      color: #0066cc;
+      text-decoration: none;
+      min-height: 48px;
+      line-height: 28px;
+    }
+    
+    a:hover {
+      text-decoration: underline;
+    }
+    
+    /* テーブルを横スクロール可能に */
+    .table-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    @media (max-width: 600px) {
+      body {
+        margin: 5px;
+      }
+      h1 {
+        font-size: 1.3em;
+      }
+      th, td {
+        padding: 6px 4px;
+        font-size: 13px;
+      }
     }
   </style>
 </head>
@@ -30,15 +113,17 @@
 
   <div id="status"></div>
 
-  <table id="resultTable">
-    <thead>
-      <tr>
-        <th data-sort="word">単語</th>
-        <th data-sort="count">出現回数</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div class="table-wrapper">
+    <table id="resultTable">
+      <thead>
+        <tr>
+          <th data-sort="word">単語</th>
+          <th data-sort="count">出現回数</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 
   <script>
     // CSV データ格納用
@@ -73,7 +158,7 @@
       });
     });
 
-    // 単純な CSV パーサ（カンマ区切り、ヘッダありを想定）
+    // 単純な CSV パーサ(カンマ区切り、ヘッダありを想定)
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
       if (lines.length < 2) return [];
@@ -124,10 +209,10 @@
     function onSort(event) {
       const column = event.currentTarget.dataset.sort;
       if (sortColumn === column) {
-        // 同じ列をクリック：方向反転
+        // 同じ列をクリック:方向反転
         sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
       } else {
-        // 新しい列：昇順で開始
+        // 新しい列:昇順で開始
         sortColumn = column;
         sortDirection = 'asc';
       }
@@ -203,7 +288,7 @@
         }
 
         if (p >= '1' && p <= '9') {
-          // 数字の場合：同じ数字には同じ文字が入る
+          // 数字の場合:同じ数字には同じ文字が入る
           if (digitMap[p] === undefined) {
             // まだ割り当てられていなければこの文字を割り当て
             digitMap[p] = w;
@@ -231,9 +316,3 @@
   </div>
 </body>
 </html>
-
-
-
-
-
-
