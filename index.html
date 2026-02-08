@@ -2,128 +2,106 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <!-- スマホ対応と入力時のズーム防止設定 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>日本語一覧 検索</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    /* 全体の設定：余白の調整 */
     body { 
       font-family: sans-serif; 
-      margin: 10px; 
-      padding: 0;
-      -webkit-text-size-adjust: 100%;
+      margin: 0; 
+      padding: 15px;
+      box-sizing: border-box;
+      background-color: #fff;
     }
-    h1 {
-      font-size: 1.5em;
-      margin: 10px 0;
+
+    /* 入力欄とラベルのコンテナ */
+    .search-container {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 15px;
     }
-    label {
-      display: block;
-      margin-bottom: 5px;
-      font-size: 16px;
-    }
-    input[type="text"] { 
-      width: 100%;
-      max-width: 100%;
-      font-size: 16px;
-      padding: 12px;
-      height: 48px;
+
+    /* 検索入力欄のスマホ最適化 */
+    /* iPhone等でズームしないよう font-size は 16px に設定 */
+    input[type="text"], #searchInput { 
+      width: 100%; 
+      font-size: 16px; 
+      padding: 10px; 
+      box-sizing: border-box; /* 枠線を含めたサイズ計算 */
       border: 1px solid #ccc;
       border-radius: 4px;
-      margin-bottom: 10px;
+      height: 44px; /* タップしやすい高さ */
+      margin-top: 5px;
     }
-    #status {
-      margin: 10px 0;
-      font-size: 14px;
-    }
+
+    /* テーブル設定 */
     table { 
       border-collapse: collapse; 
-      margin-top: 10px;
-      width: 100%;
-      font-size: 14px;
+      margin-top: 10px; 
+      width: 100%; /* 横幅いっぱいにする */
+      table-layout: fixed; /* 列幅を安定させる */
     }
+
+    /* セルとヘッダーの設定 */
     th, td { 
       border: 1px solid #ccc; 
-      padding: 8px 6px;
+      padding: 12px 8px; /* 指で押しやすいように広げる */
       cursor: pointer; 
-      user-select: none;
+      user-select: none; 
+      font-size: 14px;
+      word-break: break-all; /* 長い単語でのレイアウト崩れ防止 */
+    }
+
+    th { 
+      background: #f0f0f0; 
       text-align: left;
     }
-    th { 
-      background: #f0f0f0;
-      position: sticky;
-      top: 0;
-      font-size: 14px;
-      min-height: 48px;
-    }
+
+    /* ソート矢印 */
     th.asc::after { content: " ↑"; }
     th.desc::after { content: " ↓"; }
-    
-    /* タップしやすいセルサイズ */
-    td {
-      min-height: 44px;
+
+    /* ステータス表示 */
+    #status {
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+      color: #666;
     }
-    
-    hr {
-      margin: 20px 0;
+
+    /* リンク部分 */
+    .link-container {
+      margin-top: 20px;
+      padding: 10px 0;
     }
-    
-    a {
-      display: inline-block;
-      padding: 10px;
+    .link-container a {
       font-size: 16px;
-      color: #0066cc;
-      text-decoration: none;
-      min-height: 48px;
-      line-height: 28px;
+      padding: 10px;
+      display: inline-block;
     }
-    
-    a:hover {
-      text-decoration: underline;
-    }
-    
-    /* テーブルを横スクロール可能に */
-    .table-wrapper {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    
-    @media (max-width: 600px) {
-      body {
-        margin: 5px;
-      }
-      h1 {
-        font-size: 1.3em;
-      }
-      th, td {
-        padding: 6px 4px;
-        font-size: 13px;
-      }
-    }
+
   </style>
 </head>
 <body>
   <h1>日本語一覧 検索</h1>
 
-  <div>
+  <div class="search-container">
     <label for="searchInput">検索:</label>
-    <input type="text" id="searchInput" placeholder="例: りんご, り＊ご, １い１, か１１１き, 0き*た">
+    <input type="text" id="searchInput" placeholder="例: りんご, り＊ご, １い１, か１１１き">
   </div>
 
   <div id="status"></div>
 
-  <div class="table-wrapper">
-    <table id="resultTable">
-      <thead>
-        <tr>
-          <th data-sort="word">単語</th>
-          <th data-sort="count">出現回数</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
+  <table id="resultTable">
+    <thead>
+      <tr>
+        <th data-sort="word" style="width: 70%;">単語</th>
+        <th data-sort="count" style="width: 30%;">出現回数</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
   <script>
     // CSV データ格納用
@@ -158,7 +136,7 @@
       });
     });
 
-    // 単純な CSV パーサ(カンマ区切り、ヘッダありを想定)
+    // 単純な CSV パーサ（カンマ区切り、ヘッダありを想定）
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
       if (lines.length < 2) return [];
@@ -209,10 +187,10 @@
     function onSort(event) {
       const column = event.currentTarget.dataset.sort;
       if (sortColumn === column) {
-        // 同じ列をクリック:方向反転
+        // 同じ列をクリック：方向反転
         sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
       } else {
-        // 新しい列:昇順で開始
+        // 新しい列：昇順で開始
         sortColumn = column;
         sortDirection = 'asc';
       }
@@ -288,7 +266,7 @@
         }
 
         if (p >= '1' && p <= '9') {
-          // 数字の場合:同じ数字には同じ文字が入る
+          // 数字の場合：同じ数字には同じ文字が入る
           if (digitMap[p] === undefined) {
             // まだ割り当てられていなければこの文字を割り当て
             digitMap[p] = w;
@@ -311,7 +289,7 @@
   </script>
 
   <hr>
-  <div>
+  <div class="link-container">
     <a href="grid.html">5x5グリッド検索へ移動</a>
   </div>
 </body>
