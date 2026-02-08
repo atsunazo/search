@@ -59,7 +59,7 @@
 
   <div>
     <label for="searchInput">検索:</label>
-    <input type="text" id="searchInput" placeholder="例: りんご, り＊ご, １い１, か１１１き, 0き*た">
+    <input type="text" id="searchInput" placeholder="例: り、ご, り＊ご, 1い1, か111き, 0き*た">
   </div>
 
   <div id="status"></div>
@@ -231,7 +231,7 @@
         const p = pattern[i];
         const w = word[i];
 
-        if (p === '＊'|| p === '0'|| p === '*') {
+        if (p === '＊'|| p === '0'|| p === '*'|| p === '、') {
           // 任意1文字にマッチ
           continue;
         }
@@ -265,4 +265,5 @@
   </div>
 </body>
 </html>
+
 
