@@ -48,6 +48,26 @@
       box-sizing: border-box;
       margin-bottom: 10px; /* 下に少し隙間を開ける */
     }
+
+    /* PC用の設定（768px以上の画面幅） */
+    @media (min-width: 768px) {
+      body {
+        margin: 20px;
+      }
+
+      #searchInput {
+        font-size: 1em;
+        width: 30%;
+        padding: 0.8em;
+        height: 40px;
+      }
+
+      input[type="text"] {
+        width: 300px;
+        font-size: 16px;
+        padding: 4px;
+      }
+    }
   </style>
   <!-- アプリっぽく表示する設定 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -265,7 +285,3 @@
   </div>
 </body>
 </html>
-
-
-
-
