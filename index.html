@@ -2,24 +2,57 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <!-- ここを追加：スマホの画面幅に合わせる・入力時のズームを防ぐ -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>日本語一覧 検索</title>
   <style>
-    body { font-family: sans-serif; margin: 20px; }
-    input[type="text"] { width: 300px; font-size: 16px; padding: 4px; }
-    table { border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 4px 8px; cursor: pointer; user-select: none; }
+    /* bodyの余白調整 */
+    body { 
+      font-family: sans-serif; 
+      margin: 10px; /* スマホ向けに余白を少し縮小 */
+      background-color: #fff;
+    }
+    
+    /* 入力欄のスタイル調整 */
+    input[type="text"] { 
+      /* width: 300px;  <- 元の固定幅を削除し、下で100%にします */
+      font-size: 16px; /* 16px以上にするとスマホでズームされません */
+      padding: 8px;    /* タップしやすいように少し広げる */
+      box-sizing: border-box; /* 枠線を含めて幅を計算 */
+    }
+
+    table { 
+      border-collapse: collapse; 
+      margin-top: 10px; 
+      width: 100%; /* 表を画面幅いっぱいに */
+    }
+
+    th, td { 
+      border: 1px solid #ccc; 
+      padding: 8px; /* スマホで押しやすい広さに */
+      cursor: pointer; 
+      user-select: none;
+      word-break: break-all; /* 長い文字が画面からはみ出ないように */
+    }
+
     th { background: #f0f0f0; }
     th.asc::after { content: " ↑"; }
     th.desc::after { content: " ↓"; }
-      #searchInput {
-      font-size: 16px;
-      width: 30%;
+
+    /* ID指定のスタイル（こちらのほうが優先度が高いためここで幅を上書き） */
+    #searchInput {
+      font-size: 16px; /* 1emだと小さすぎてズームされることがあるため16px固定 */
+      width: 100%;     /* 30% -> 100% に変更してスマホで入力しやすく */
       padding: 0.8em;
-      height: 40px;
+      height: 44px;    /* 指でタップしやすい高さ */
       box-sizing: border-box;
+      margin-bottom: 10px; /* 下に少し隙間を開ける */
     }
   </style>
+  <!-- アプリっぽく表示する設定 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="日本語検索">
 </head>
 <body>
   <h1>日本語一覧 検索</h1>
@@ -76,7 +109,7 @@
 
     // 単純な CSV パーサ（カンマ区切り、ヘッダありを想定）
     function parseCSV(text) {
-      const lines = text.trim().split(/\r?\n/);
+      const lines = text.trim().split(/\\r?\\n/);
       if (lines.length < 2) return [];
 
       // 先頭行はヘッダ: 単語,出現回数 を想定
