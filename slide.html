@@ -143,11 +143,15 @@
       'わ', 'を', 'ん'
     ];
 
-    // 濁音グループ
-    const dakuon = [
+    // 濁音グループ1（が〜ご、ざ〜ぞ、だ〜ど）
+    const dakuon1 = [
       'が', 'ぎ', 'ぐ', 'げ', 'ご',
       'ざ', 'じ', 'ず', 'ぜ', 'ぞ',
-      'だ', 'ぢ', 'づ', 'で', 'ど',
+      'だ', 'ぢ', 'づ', 'で', 'ど'
+    ];
+
+    // 濁音グループ2（ば〜ぼ）
+    const dakuon2 = [
       'ば', 'び', 'ぶ', 'べ', 'ぼ'
     ];
 
@@ -242,9 +246,12 @@
       if (seion.includes(char)) {
         group = seion;
         index = seion.indexOf(char);
-      } else if (dakuon.includes(char)) {
-        group = dakuon;
-        index = dakuon.indexOf(char);
+      } else if (dakuon1.includes(char)) {
+        group = dakuon1;
+        index = dakuon1.indexOf(char);
+      } else if (dakuon2.includes(char)) {
+        group = dakuon2;
+        index = dakuon2.indexOf(char);
       } else if (handakuon.includes(char)) {
         group = handakuon;
         index = handakuon.indexOf(char);
