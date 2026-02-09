@@ -286,15 +286,15 @@
       document.getElementById('status').textContent = 
         `結果: 上${upResults.length}件(${upExists}存在) / 下${downResults.length}件(${downExists}存在)`;
       
-      displayResults(upResults, upTbody);
-      displayResults(downResults, downTbody);
+      displayResults(upResults, upTbody, true); // 逆順表示
+      displayResults(downResults, downTbody, false); // 通常順
     }
 
     // ずらした単語を生成（direction: -1=上, 1=下）
     function generateShiftedWords(original, direction) {
       const results = [];
       
-      for (let shift = 1; shift <= 15; shift++) {
+      for (let shift = 1; shift <= 30; shift++) {
         let shifted = '';
         let canContinue = true;
 
@@ -352,16 +352,19 @@
       return group[newIndex];
     }
 
-    function displayResults(results, tbody) {
+    function displayResults(results, tbody, reverse = false) {
       tbody.innerHTML = '';
       
-      for (let i = 0; i < results.length; i++) {
-        const word = results[i];
+      // 逆順の場合は配列を反転
+      const displayArray = reverse ? [...results].reverse() : results;
+      
+      for (let i = 0; i < displayArray.length; i++) {
+        const word = displayArray[i];
         const tr = document.createElement('tr');
         
-        // 番号列
+        // 番号列（逆順の場合は大きい番号から）
         const tdNumber = document.createElement('td');
-        tdNumber.textContent = i + 1;
+        tdNumber.textContent = reverse ? results.length - i : i + 1;
         tdNumber.classList.add('number-cell');
         tr.appendChild(tdNumber);
         
