@@ -75,6 +75,11 @@
       font-weight: bold;
     }
 
+    .number-cell {
+      width: 40px;
+      text-align: center;
+    }
+
     .exists {
       background-color: #c8e6c9;
     }
@@ -135,6 +140,7 @@
       <table id="upTable">
         <thead>
           <tr>
+            <th class="number-cell">No.</th>
             <th>単語</th>
           </tr>
         </thead>
@@ -147,6 +153,7 @@
       <table id="downTable">
         <thead>
           <tr>
+            <th class="number-cell">No.</th>
             <th>単語</th>
           </tr>
         </thead>
@@ -348,17 +355,26 @@
     function displayResults(results, tbody) {
       tbody.innerHTML = '';
       
-      for (const word of results) {
+      for (let i = 0; i < results.length; i++) {
+        const word = results[i];
         const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.textContent = word;
+        
+        // 番号列
+        const tdNumber = document.createElement('td');
+        tdNumber.textContent = i + 1;
+        tdNumber.classList.add('number-cell');
+        tr.appendChild(tdNumber);
+        
+        // 単語列
+        const tdWord = document.createElement('td');
+        tdWord.textContent = word;
         
         // 辞書に存在する場合は緑色背景
         if (wordSet.has(word)) {
-          td.classList.add('exists');
+          tdWord.classList.add('exists');
         }
         
-        tr.appendChild(td);
+        tr.appendChild(tdWord);
         tbody.appendChild(tr);
       }
     }
