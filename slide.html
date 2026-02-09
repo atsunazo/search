@@ -129,8 +129,8 @@
     let sortColumn = null;
     let sortDirection = 'asc';
 
-    // 五十音順の配列（濁音・半濁音・小文字含む）
-    const hiraganaOrder = [
+    // 清音（濁点・半濁点なし）
+    const seion = [
       'あ', 'い', 'う', 'え', 'お',
       'か', 'き', 'く', 'け', 'こ',
       'さ', 'し', 'す', 'せ', 'そ',
@@ -140,18 +140,27 @@
       'ま', 'み', 'む', 'め', 'も',
       'や', 'ゆ', 'よ',
       'ら', 'り', 'る', 'れ', 'ろ',
-      'わ', 'を', 'ん',
-      'っ',
-      'ゃ', 'ゅ', 'ょ'
+      'わ', 'を', 'ん'
+    ];
+
+    // 濁音グループ
+    const dakuon = [
       'が', 'ぎ', 'ぐ', 'げ', 'ご',
       'ざ', 'じ', 'ず', 'ぜ', 'ぞ',
       'だ', 'ぢ', 'づ', 'で', 'ど',
-      'ば', 'び', 'ぶ', 'べ', 'ぼ',
-      'ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ',
+      'ば', 'び', 'ぶ', 'べ', 'ぼ'
     ];
 
-    // 終了文字（これ以上ずらせない）
-    const endChars = ['ん', 'ご', 'ぞ', 'ど', 'ぼ', 'ぽ', 'っ', 'ょ'];
+    // 半濁音グループ
+    const handakuon = [
+      'ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ'
+    ];
+
+    // 小さい文字グループ
+    const chiisai = [
+      'っ',
+      'ゃ', 'ゅ', 'ょ'
+    ];
 
     // ページ読み込み時
     window.addEventListener('DOMContentLoaded', () => {
@@ -193,7 +202,7 @@
       updateSortIndicators();
     }
 
-    // ずらした単語を生成（1〜15、途中で終了文字に達したら停止）
+    // ずらした単語を生成（1〜15、途中で終了したら停止）
     function generateShiftedWords(original) {
       const results = [];
       
@@ -219,37 +228,41 @@
           shiftAmount: shift,
           original: original
         });
-
-        // 全文字が終了文字に達していないかチェック
-        let hasEndChar = false;
-        for (let i = 0; i < shifted.length; i++) {
-          if (endChars.includes(shifted[i])) {
-            hasEndChar = true;
-            break;
-          }
-        }
-        
-        if (hasEndChar) {
-          break; // 終了文字に達したら停止
-        }
       }
       
       return results;
     }
 
-    // 単一ひらがなを指定数ずらす（終了文字を超えたらnullを返す）
+    // 単一ひらがなを指定数ずらす（グループ内でのみずらす）
     function shiftHiragana(char, shift) {
-      const index = hiraganaOrder.indexOf(char);
-      if (index === -1) return char; // リストにない文字はそのまま
-      
+      // どのグループに属するか判定
+      let group = null;
+      let index = -1;
+
+      if (seion.includes(char)) {
+        group = seion;
+        index = seion.indexOf(char);
+      } else if (dakuon.includes(char)) {
+        group = dakuon;
+        index = dakuon.indexOf(char);
+      } else if (handakuon.includes(char)) {
+        group = handakuon;
+        index = handakuon.indexOf(char);
+      } else if (chiisai.includes(char)) {
+        group = chiisai;
+        index = chiisai.indexOf(char);
+      } else {
+        return char; // 該当なしはそのまま
+      }
+
       const newIndex = index + shift;
       
-      // 範囲外チェック
-      if (newIndex >= hiraganaOrder.length) {
+      // グループ範囲外ならnull（ずらせない）
+      if (newIndex >= group.length) {
         return null;
       }
       
-      return hiraganaOrder[newIndex];
+      return group[newIndex];
     }
 
     // ソート機能
