@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ひらがなずらし検索</title>
+  <style>
+    body { 
+      font-family: sans-serif; 
+      margin: 10px;
+      background-color: #fff;
+    }
+    
+    input[type="text"], button { 
+      font-size: 16px;
+      padding: 8px;
+      box-sizing: border-box;
+      margin: 5px 0;
+    }
+
+    #inputArea {
+      margin-bottom: 20px;
+    }
+
+    #searchInput {
+      font-size: 16px;
+      width: 100%;
+      padding: 0.8em;
+      height: 44px;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+
+    #executeBtn {
+      width: 100%;
+      height: 44px;
+      background: #007AFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #executeBtn:hover {
+      background: #0056CC;
+    }
+
+    table { 
+      border-collapse: collapse; 
+      margin-top: 10px; 
+      width: 100%;
+    }
+
+    th, td { 
+      border: 1px solid #ccc; 
+      padding: 8px;
+      cursor: pointer; 
+      user-select: none;
+      word-break: break-all;
+      text-align: left;
+    }
+
+    th { background: #f0f0f0; }
+    th.asc::after { content: " ↑"; }
+    th.desc::after { content: " ↓"; }
+
+    #status {
+      margin: 10px 0;
+      font-weight: bold;
+    }
+
+    @media (min-width: 768px) {
+      body {
+        margin: 20px;
+      }
+
+      #searchInput {
+        font-size: 1em;
+        width: 50%;
+        padding: 0.8em;
+        height: 40px;
+      }
+
+      #executeBtn {
+        width: 20%;
+        height: 40px;
+      }
+
+      input[type="text"] {
+        width: 30%;
+        font-size: 16px;
+        padding: 4px;
+      }
+    }
+  </style>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="ひらがなずらし">
+</head>
+<body>
+  <h1>ひらがなずらし検索</h1>
+  
+  <div id="inputArea">
+    <label for="searchInput">ひらがなを入力:</label><br>
+    <input type="text" id="searchInput" placeholder="例: かきくけこ、あいうえお">
+    <br>
+    <button id="executeBtn">実行</button>
+  </div>
+  
+  <div id="status"></div>
+
+  <table id="resultTable">
+    <thead>
+      <tr>
+        <th data-sort="shifted">ずらした単語</th>
+        <th data-sort="shiftAmount">ずらし量</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <hr>
+  <div>
+    <a href="index.html">一覧検索に戻る</a>
+  </div>
+
+  <script>
+    let currentResults = [];
+    let sortColumn = null;
+    let sortDirection = 'asc';
+
+    // ページ読み込み時
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('executeBtn').addEventListener('click', onExecute);
+      document.getElementById('searchInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') onExecute();
+      });
+      
+      document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', onSort);
+      });
+    });
+
+    // 実行ボタン押下時
+    function onExecute() {
+      const input = document.getElementById('searchInput').value.trim();
+      const tbody = document.querySelector('#resultTable tbody');
+      tbody.innerHTML = '';
+
+      if (!input) {
+        document.getElementById('status').textContent = '';
+        return;
+      }
+
+      // 全文字がひらがなかチェック
+      if (!/^[あ-ん]+$/.test(input)) {
+        document.getElementById('status').textContent = 'ひらがなのみ入力してください';
+        return;
+      }
+
+      currentResults = generateShiftedWords(input);
+      document.getElementById('status').textContent = '結果: ' + currentResults.length + '件';
+      
+      if (sortColumn) {
+        sortResults(sortColumn, sortDirection);
+      }
+      
+      displayResults();
+      updateSortIndicators();
+    }
+
+    // ずらした単語を生成
+    function generateShiftedWords(original) {
+      const results = [];
+      
+      // 各ずらし量（1〜4）で生成
+      for (let shift = 1; shift <= 4; shift++) {
+        let shifted = '';
+        for (let i = 0; i < original.length; i++) {
+          const charCode = original.charCodeAt(i);
+          // あいうえお順（各行を循環）
+          const newCharCode = ((charCode - 0x3041 + shift) % 5) + 0x3041 + Math.floor((charCode - 0x3041) / 5) * 5;
+          shifted += String.fromCharCode(newCharCode);
+        }
+        results.push({
+          shifted: shifted,
+          shiftAmount: shift,
+          original: original
+        });
+      }
+      
+      return results;
+    }
+
+    // ソート機能
+    function onSort(event) {
+      const column = event.currentTarget.dataset.sort;
+      if (sortColumn === column) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortColumn = column;
+        sortDirection = 'asc';
+      }
+      
+      sortResults(sortColumn, sortDirection);
+      displayResults();
+      updateSortIndicators();
+    }
+
+    function sortResults(column, direction) {
+      currentResults.sort((a, b) => {
+        let aVal, bVal;
+        if (column === 'shifted') {
+          aVal = a.shifted;
+          bVal = b.shifted;
+        } else {
+          aVal = a.shiftAmount;
+          bVal = b.shiftAmount;
+        }
+        
+        if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    function displayResults() {
+      const tbody = document.querySelector('#resultTable tbody');
+      tbody.innerHTML = '';
+      
+      for (const item of currentResults) {
+        const tr = document.createElement('tr');
+        const tdShifted = document.createElement('td');
+        const tdShift = document.createElement('td');
+        tdShifted.textContent = item.shifted;
+        tdShift.textContent = item.shiftAmount + 'つずらし';
+        tr.appendChild(tdShifted);
+        tr.appendChild(tdShift);
+        tbody.appendChild(tr);
+      }
+    }
+
+    function updateSortIndicators() {
+      document.querySelectorAll('th').forEach(th => {
+        th.classList.remove('asc', 'desc');
+      });
+      
+      if (sortColumn) {
+        const activeTh = document.querySelector(`th[data-sort="${sortColumn}"]`);
+        if (activeTh) {
+          activeTh.classList.add(sortDirection);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
