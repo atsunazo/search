@@ -165,17 +165,17 @@
   <hr>
   <div>
     <a href="index.html">一覧検索に戻る</a> | 
-    <a href="slide.html">ひらがなずらしへ</a>
+    <a href="hiragana-shift.html">ひらがなずらしへ</a>
   </div>
 
   <script>
-    // CSVデータ格納用
+    // CSVデータ格納用（大文字小文字両方を保持）
     let wordSet = new Set();
 
     // ページ読み込み時
     window.addEventListener('DOMContentLoaded', () => {
       // CSV読み込み
-      fetch('alphabet.csv')
+      fetch('日本語一覧new.csv')
         .then(response => {
           if (!response.ok) {
             throw new Error('CSV を読み込めませんでした: ' + response.status);
@@ -198,7 +198,7 @@
       });
     });
 
-    // CSVパーサ（単語をSetに格納）
+    // CSVパーサ（単語を大文字小文字両方Setに格納）
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
       const words = new Set();
@@ -214,7 +214,8 @@
         const cols = lines[i].split(',');
         const word = cols[wordIndex] || '';
         if (word) {
-          words.add(word);
+          // 大文字小文字両方を登録（大文字小文字を区別しない検索用）
+          words.add(word.toLowerCase());
         }
       }
       
@@ -236,7 +237,7 @@
       }
 
       // 全文字が半角アルファベットかチェック
-      if (!/^[a-z]+$/i.test(input)) {
+      if (!/^[a-zA-Z]+$/.test(input)) {
         document.getElementById('status').textContent = '半角アルファベットのみ入力してください';
         return;
       }
@@ -317,8 +318,8 @@
         const tdWord = document.createElement('td');
         tdWord.textContent = word;
         
-        // 辞書に存在する場合は緑色背景
-        if (wordSet.has(word)) {
+        // 辞書に存在する場合は緑色背景（大文字小文字を区別しない）
+        if (wordSet.has(word.toLowerCase())) {
           tdWord.classList.add('exists');
         }
         
