@@ -165,7 +165,7 @@
   <hr>
   <div>
     <a href="index.html">一覧検索に戻る</a> | 
-    <a href="hiragana-shift.html">ひらがなずらしへ</a>
+    <a href="slide.html">ひらがなずらしへ</a>
   </div>
 
   <script>
@@ -175,7 +175,7 @@
     // ページ読み込み時
     window.addEventListener('DOMContentLoaded', () => {
       // CSV読み込み
-      fetch('日本語一覧new.csv')
+      fetch('alphabet.csv')
         .then(response => {
           if (!response.ok) {
             throw new Error('CSV を読み込めませんでした: ' + response.status);
