@@ -85,6 +85,12 @@
         width: 20%;
         height: 40px;
       }
+
+      input[type="text"] {
+        width: 30%;
+        font-size: 16px;
+        padding: 4px;
+      }
     }
   </style>
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -96,7 +102,7 @@
   
   <div id="inputArea">
     <label for="searchInput">ひらがなを入力:</label><br>
-    <input type="text" id="searchInput" placeholder="例: かがみ、かきく、がぎぐ">
+    <input type="text" id="searchInput" placeholder="例: かがみ、はば、ちゃ">
     <br>
     <button id="executeBtn">実行</button>
   </div>
@@ -123,6 +129,31 @@
     let sortColumn = null;
     let sortDirection = 'asc';
 
+    // 五十音順の配列（濁音・半濁音・小文字含む）
+    const hiraganaOrder = [
+      'あ', 'い', 'う', 'え', 'お',
+      'か', 'き', 'く', 'け', 'こ',
+      'が', 'ぎ', 'ぐ', 'げ', 'ご',
+      'さ', 'し', 'す', 'せ', 'そ',
+      'ざ', 'じ', 'ず', 'ぜ', 'ぞ',
+      'た', 'ち', 'つ', 'て', 'と',
+      'だ', 'ぢ', 'づ', 'で', 'ど',
+      'な', 'に', 'ぬ', 'ね', 'の',
+      'は', 'ひ', 'ふ', 'へ', 'ほ',
+      'ば', 'び', 'ぶ', 'べ', 'ぼ',
+      'ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ',
+      'ま', 'み', 'む', 'め', 'も',
+      'や', 'ゆ', 'よ',
+      'ら', 'り', 'る', 'れ', 'ろ',
+      'わ', 'を', 'ん',
+      'っ',
+      'ゃ', 'ゅ', 'ょ'
+    ];
+
+    // 終了文字（これ以上ずらせない）
+    const endChars = ['ん', 'ご', 'ぞ', 'ど', 'ぼ', 'ぽ', 'っ', 'ょ'];
+
+    // ページ読み込み時
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('executeBtn').addEventListener('click', onExecute);
       document.getElementById('searchInput').addEventListener('keypress', (e) => {
@@ -134,6 +165,7 @@
       });
     });
 
+    // 実行ボタン押下時
     function onExecute() {
       const input = document.getElementById('searchInput').value.trim();
       const tbody = document.querySelector('#resultTable tbody');
@@ -144,13 +176,14 @@
         return;
       }
 
-      if (!/^[あ-んっゃゅょ]+$/.test(input)) {
-        document.getElementById('status').textContent = 'ひらがな・小さい文字のみ入力してください';
+      // 全文字がひらがなかチェック
+      if (!/^[あ-ん゛゜ぁぃぅぇぉゃゅょゎっ]+$/.test(input)) {
+        document.getElementById('status').textContent = 'ひらがなのみ入力してください';
         return;
       }
 
       currentResults = generateShiftedWords(input);
-      document.getElementById('status').textContent = '結果: ' + currentResults.length + '件（最大15ずらし）';
+      document.getElementById('status').textContent = '結果: ' + currentResults.length + '件';
       
       if (sortColumn) {
         sortResults(sortColumn, sortDirection);
@@ -160,73 +193,66 @@
       updateSortIndicators();
     }
 
+    // ずらした単語を生成（1〜15、途中で終了文字に達したら停止）
     function generateShiftedWords(original) {
       const results = [];
       
       for (let shift = 1; shift <= 15; shift++) {
         let shifted = '';
-        let canShift = true;
-        
+        let canContinue = true;
+
         for (let i = 0; i < original.length; i++) {
-          const nextChar = shiftHiragana(original[i], 1);
+          const nextChar = shiftHiragana(original[i], shift);
           if (nextChar === null) {
-            canShift = false;
+            canContinue = false;
             break;
           }
           shifted += nextChar;
         }
-        
-        if (!canShift) break;
-        
+
+        if (!canContinue) {
+          break; // どれか1文字でもずらせなくなったら終了
+        }
+
         results.push({
           shifted: shifted,
           shiftAmount: shift,
           original: original
         });
+
+        // 全文字が終了文字に達していないかチェック
+        let hasEndChar = false;
+        for (let i = 0; i < shifted.length; i++) {
+          if (endChars.includes(shifted[i])) {
+            hasEndChar = true;
+            break;
+          }
+        }
+        
+        if (hasEndChar) {
+          break; // 終了文字に達したら停止
+        }
       }
       
       return results;
     }
 
-    // 次の1文字を返す（nullなら終わり）
-    function shiftHiragana(char, amount) {
-      // 各グループの終端と次の文字
-      const groups = {
-        // 基本五十音（終端：ん）
-        'あ': ['い','う','え','お','か','き','く','け','こ','さ','し','す','せ','そ','た','ち','つ','て','と','な','に','ぬ','ね','の','は','ひ','ふ','へ','ほ','ま','み','む','め','も','や','ゆ','よ','ら','り','る','れ','ろ','わ','を','ん'],
-        
-        // 濁点グループ（終端：ど）
-        'が': ['ぎ','ぐ','げ','ご','ざ','じ','ず','ぜ','ぞ','だ','ぢ','づ','で','ど'],
-        
-        // 半濁点グループ（終端：ぽ）
-        'ぱ': ['ぴ','ぷ','ぺ','ぽ'],
-        
-        // 小さい文字（終端：っ）
-        'っ': [],
-        
-        // 小さいゃゅょ（終端：ょ）
-        'ゃ': ['ゅ','ょ']
-      };
-
-      for (const [start, sequence] of Object.entries(groups)) {
-        if (sequence.includes(char)) {
-          const index = sequence.indexOf(char);
-          if (index + amount < sequence.length) {
-            return sequence[index + amount];
-          }
-          return null; // 終端を超えた
-        }
+    // 単一ひらがなを指定数ずらす（終了文字を超えたらnullを返す）
+    function shiftHiragana(char, shift) {
+      const index = hiraganaOrder.indexOf(char);
+      if (index === -1) return char; // リストにない文字はそのまま
+      
+      const newIndex = index + shift;
+      
+      // 範囲外チェック
+      if (newIndex >= hiraganaOrder.length) {
+        return null;
       }
       
-      // 基本グループから見つからない場合は基本五十音で処理
-      const basicIndex = groups['あ'].indexOf(char);
-      if (basicIndex !== -1 && basicIndex + amount < groups['あ'].length) {
-        return groups['あ'][basicIndex + amount];
-      }
-      
-      return null;
+      return hiraganaOrder[newIndex];
     }
 
+    // ソート機能
     function onSort(event) {
       const column = event.currentTarget.dataset.sort;
       if (sortColumn === column) {
