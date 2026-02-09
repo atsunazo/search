@@ -80,8 +80,21 @@
       text-align: center;
     }
 
+    .word-cell {
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .word-cell:hover {
+      background-color: #e3f2fd;
+    }
+
     .exists {
       background-color: #c8e6c9;
+    }
+
+    .exists:hover {
+      background-color: #a5d6a7;
     }
 
     #status {
@@ -141,7 +154,7 @@
         <thead>
           <tr>
             <th class="number-cell">No.</th>
-            <th>単語</th>
+            <th>単語（クリックで検索）</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -154,7 +167,7 @@
         <thead>
           <tr>
             <th class="number-cell">No.</th>
-            <th>単語</th>
+            <th>単語（クリックで検索）</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -298,6 +311,12 @@
       return String.fromCharCode(newCharCode);
     }
 
+    // Google検索を開く関数
+    function searchWord(word) {
+      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(word)}`;
+      window.open(searchUrl, '_blank');
+    }
+
     function displayResults(results, tbody, reverse = false) {
       tbody.innerHTML = '';
       
@@ -317,6 +336,12 @@
         // 単語列
         const tdWord = document.createElement('td');
         tdWord.textContent = word;
+        tdWord.classList.add('word-cell');
+        
+        // クリックイベントを追加
+        tdWord.addEventListener('click', () => {
+          searchWord(word);
+        });
         
         // 辞書に存在する場合は緑色背景（大文字小文字を区別しない）
         if (wordSet.has(word.toLowerCase())) {
