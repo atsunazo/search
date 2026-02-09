@@ -39,6 +39,10 @@
     th.asc::after { content: " ↑"; }
     th.desc::after { content: " ↓"; }
 
+    td:hover {
+      background-color: #e3f2fd;
+    }
+
     /* ID指定のスタイル（こちらのほうが優先度が高いためここで幅を上書き） */
     #searchInput {
       font-size: 16px; /* 1emだと小さすぎてズームされることがあるため16px固定 */
@@ -87,7 +91,7 @@
   <table id="resultTable">
     <thead>
       <tr>
-        <th data-sort="word">単語</th>
+        <th data-sort="word">単語（クリックで検索）</th>
         <th data-sort="count">出現回数</th>
       </tr>
     </thead>
@@ -208,6 +212,12 @@
       });
     }
 
+    // Google検索を開く関数
+    function searchWord(word) {
+      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(word)}`;
+      window.open(searchUrl, '_blank');
+    }
+
     function displayResults() {
       const tbody = document.querySelector('#resultTable tbody');
       tbody.innerHTML = '';
@@ -218,6 +228,12 @@
         const tdCount = document.createElement('td');
         tdWord.textContent = item.word;
         tdCount.textContent = item.count;
+        
+        // 単語セルにクリックイベントを追加
+        tdWord.addEventListener('click', () => {
+          searchWord(item.word);
+        });
+        
         tr.appendChild(tdWord);
         tr.appendChild(tdCount);
         tbody.appendChild(tr);
@@ -289,7 +305,3 @@
   </div>
 </body>
 </html>
-
-
-
-
