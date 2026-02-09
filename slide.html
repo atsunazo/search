@@ -75,6 +75,10 @@
       font-weight: bold;
     }
 
+    .exists {
+      background-color: #c8e6c9;
+    }
+
     #status {
       margin: 10px 0;
       font-weight: bold;
@@ -194,13 +198,57 @@
       'ゃ', 'ゅ', 'ょ'
     ];
 
+    // CSVデータ格納用
+    let wordSet = new Set();
+
     // ページ読み込み時
     window.addEventListener('DOMContentLoaded', () => {
+      // CSV読み込み
+      fetch('日本語一覧new.csv')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('CSV を読み込めませんでした: ' + response.status);
+          }
+          return response.text();
+        })
+        .then(text => {
+          wordSet = parseCSV(text);
+          document.getElementById('status').textContent = 
+            `辞書読み込み完了: ${wordSet.size}単語`;
+        })
+        .catch(err => {
+          document.getElementById('status').textContent = 
+            '辞書読み込みエラー: ' + err.message;
+        });
+
       document.getElementById('executeBtn').addEventListener('click', onExecute);
       document.getElementById('searchInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') onExecute();
       });
     });
+
+    // CSVパーサ（単語をSetに格納）
+    function parseCSV(text) {
+      const lines = text.trim().split(/\r?\n/);
+      const words = new Set();
+      
+      if (lines.length < 2) return words;
+
+      // 先頭行はヘッダ: 単語,出現回数 を想定
+      const header = lines[0].split(',');
+      const wordIndex = header.indexOf('単語');
+
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const cols = lines[i].split(',');
+        const word = cols[wordIndex] || '';
+        if (word) {
+          words.add(word);
+        }
+      }
+      
+      return words;
+    }
 
     // 実行ボタン押下時
     function onExecute() {
@@ -211,7 +259,8 @@
       downTbody.innerHTML = '';
 
       if (!input) {
-        document.getElementById('status').textContent = '';
+        document.getElementById('status').textContent = 
+          `辞書読み込み完了: ${wordSet.size}単語`;
         return;
       }
 
@@ -224,8 +273,11 @@
       const upResults = generateShiftedWords(input, -1); // 上にずらす（マイナス）
       const downResults = generateShiftedWords(input, 1); // 下にずらす（プラス）
       
+      const upExists = upResults.filter(w => wordSet.has(w)).length;
+      const downExists = downResults.filter(w => wordSet.has(w)).length;
+      
       document.getElementById('status').textContent = 
-        `結果: 上${upResults.length}件 / 下${downResults.length}件`;
+        `結果: 上${upResults.length}件(${upExists}存在) / 下${downResults.length}件(${downExists}存在)`;
       
       displayResults(upResults, upTbody);
       displayResults(downResults, downTbody);
@@ -300,6 +352,12 @@
         const tr = document.createElement('tr');
         const td = document.createElement('td');
         td.textContent = word;
+        
+        // 辞書に存在する場合は緑色背景
+        if (wordSet.has(word)) {
+          td.classList.add('exists');
+        }
+        
         tr.appendChild(td);
         tbody.appendChild(tr);
       }
