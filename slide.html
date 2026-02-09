@@ -45,6 +45,17 @@
       background: #0056CC;
     }
 
+    #resultsContainer {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .resultColumn {
+      flex: 1;
+      min-width: 250px;
+    }
+
     table { 
       border-collapse: collapse; 
       margin-top: 10px; 
@@ -54,19 +65,24 @@
     th, td { 
       border: 1px solid #ccc; 
       padding: 8px;
-      cursor: pointer; 
       user-select: none;
       word-break: break-all;
       text-align: left;
     }
 
-    th { background: #f0f0f0; }
-    th.asc::after { content: " ↑"; }
-    th.desc::after { content: " ↓"; }
+    th { 
+      background: #f0f0f0;
+      font-weight: bold;
+    }
 
     #status {
       margin: 10px 0;
       font-weight: bold;
+    }
+
+    h3 {
+      margin-top: 10px;
+      margin-bottom: 5px;
     }
 
     @media (min-width: 768px) {
@@ -109,15 +125,31 @@
   
   <div id="status"></div>
 
-  <table id="resultTable">
-    <thead>
-      <tr>
-        <th data-sort="shifted">ずらした単語</th>
-        <th data-sort="shiftAmount">ずらし量</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div id="resultsContainer">
+    <div class="resultColumn">
+      <h3>上にずらす</h3>
+      <table id="upTable">
+        <thead>
+          <tr>
+            <th>単語</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="resultColumn">
+      <h3>下にずらす</h3>
+      <table id="downTable">
+        <thead>
+          <tr>
+            <th>単語</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
 
   <hr>
   <div>
@@ -125,10 +157,6 @@
   </div>
 
   <script>
-    let currentResults = [];
-    let sortColumn = null;
-    let sortDirection = 'asc';
-
     // 清音（濁点・半濁点なし）
     const seion = [
       'あ', 'い', 'う', 'え', 'お',
@@ -172,17 +200,15 @@
       document.getElementById('searchInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') onExecute();
       });
-      
-      document.querySelectorAll('th[data-sort]').forEach(th => {
-        th.addEventListener('click', onSort);
-      });
     });
 
     // 実行ボタン押下時
     function onExecute() {
       const input = document.getElementById('searchInput').value.trim();
-      const tbody = document.querySelector('#resultTable tbody');
-      tbody.innerHTML = '';
+      const upTbody = document.querySelector('#upTable tbody');
+      const downTbody = document.querySelector('#downTable tbody');
+      upTbody.innerHTML = '';
+      downTbody.innerHTML = '';
 
       if (!input) {
         document.getElementById('status').textContent = '';
@@ -195,19 +221,18 @@
         return;
       }
 
-      currentResults = generateShiftedWords(input);
-      document.getElementById('status').textContent = '結果: ' + currentResults.length + '件';
+      const upResults = generateShiftedWords(input, -1); // 上にずらす（マイナス）
+      const downResults = generateShiftedWords(input, 1); // 下にずらす（プラス）
       
-      if (sortColumn) {
-        sortResults(sortColumn, sortDirection);
-      }
+      document.getElementById('status').textContent = 
+        `結果: 上${upResults.length}件 / 下${downResults.length}件`;
       
-      displayResults();
-      updateSortIndicators();
+      displayResults(upResults, upTbody);
+      displayResults(downResults, downTbody);
     }
 
-    // ずらした単語を生成（1〜15、途中で終了したら停止）
-    function generateShiftedWords(original) {
+    // ずらした単語を生成（direction: -1=上, 1=下）
+    function generateShiftedWords(original, direction) {
       const results = [];
       
       for (let shift = 1; shift <= 15; shift++) {
@@ -215,7 +240,7 @@
         let canContinue = true;
 
         for (let i = 0; i < original.length; i++) {
-          const nextChar = shiftHiragana(original[i], shift);
+          const nextChar = shiftHiragana(original[i], shift * direction);
           if (nextChar === null) {
             canContinue = false;
             break;
@@ -227,11 +252,7 @@
           break; // どれか1文字でもずらせなくなったら終了
         }
 
-        results.push({
-          shifted: shifted,
-          shiftAmount: shift,
-          original: original
-        });
+        results.push(shifted);
       }
       
       return results;
@@ -265,71 +286,22 @@
       const newIndex = index + shift;
       
       // グループ範囲外ならnull（ずらせない）
-      if (newIndex >= group.length) {
+      if (newIndex < 0 || newIndex >= group.length) {
         return null;
       }
       
       return group[newIndex];
     }
 
-    // ソート機能
-    function onSort(event) {
-      const column = event.currentTarget.dataset.sort;
-      if (sortColumn === column) {
-        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-      } else {
-        sortColumn = column;
-        sortDirection = 'asc';
-      }
-      
-      sortResults(sortColumn, sortDirection);
-      displayResults();
-      updateSortIndicators();
-    }
-
-    function sortResults(column, direction) {
-      currentResults.sort((a, b) => {
-        let aVal, bVal;
-        if (column === 'shifted') {
-          aVal = a.shifted;
-          bVal = b.shifted;
-        } else {
-          aVal = a.shiftAmount;
-          bVal = b.shiftAmount;
-        }
-        
-        if (aVal < bVal) return direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-
-    function displayResults() {
-      const tbody = document.querySelector('#resultTable tbody');
+    function displayResults(results, tbody) {
       tbody.innerHTML = '';
       
-      for (const item of currentResults) {
+      for (const word of results) {
         const tr = document.createElement('tr');
-        const tdShifted = document.createElement('td');
-        const tdShift = document.createElement('td');
-        tdShifted.textContent = item.shifted;
-        tdShift.textContent = item.shiftAmount + 'つずらし';
-        tr.appendChild(tdShifted);
-        tr.appendChild(tdShift);
+        const td = document.createElement('td');
+        td.textContent = word;
+        tr.appendChild(td);
         tbody.appendChild(tr);
-      }
-    }
-
-    function updateSortIndicators() {
-      document.querySelectorAll('th').forEach(th => {
-        th.classList.remove('asc', 'desc');
-      });
-      
-      if (sortColumn) {
-        const activeTh = document.querySelector(`th[data-sort="${sortColumn}"]`);
-        if (activeTh) {
-          activeTh.classList.add(sortDirection);
-        }
       }
     }
   </script>
