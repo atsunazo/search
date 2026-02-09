@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>アルファベットずらし検索</title>
+  <style>
+    body { 
+      font-family: sans-serif; 
+      margin: 10px;
+      background-color: #fff;
+    }
+    
+    input[type="text"], button { 
+      font-size: 16px;
+      padding: 8px;
+      box-sizing: border-box;
+      margin: 5px 0;
+    }
+
+    #inputArea {
+      margin-bottom: 20px;
+    }
+
+    #searchInput {
+      font-size: 16px;
+      width: 100%;
+      padding: 0.8em;
+      height: 44px;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+
+    #executeBtn {
+      width: 100%;
+      height: 44px;
+      background: #007AFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #executeBtn:hover {
+      background: #0056CC;
+    }
+
+    #resultsContainer {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .resultColumn {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    table { 
+      border-collapse: collapse; 
+      margin-top: 10px; 
+      width: 100%;
+    }
+
+    th, td { 
+      border: 1px solid #ccc; 
+      padding: 8px;
+      user-select: none;
+      word-break: break-all;
+      text-align: left;
+    }
+
+    th { 
+      background: #f0f0f0;
+      font-weight: bold;
+    }
+
+    .number-cell {
+      width: 40px;
+      text-align: center;
+    }
+
+    .exists {
+      background-color: #c8e6c9;
+    }
+
+    #status {
+      margin: 10px 0;
+      font-weight: bold;
+    }
+
+    h3 {
+      margin-top: 10px;
+      margin-bottom: 5px;
+    }
+
+    @media (min-width: 768px) {
+      body {
+        margin: 20px;
+      }
+
+      #searchInput {
+        font-size: 1em;
+        width: 50%;
+        padding: 0.8em;
+        height: 40px;
+      }
+
+      #executeBtn {
+        width: 20%;
+        height: 40px;
+      }
+
+      input[type="text"] {
+        width: 30%;
+        font-size: 16px;
+        padding: 4px;
+      }
+    }
+  </style>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="アルファベットずらし">
+</head>
+<body>
+  <h1>アルファベットずらし検索</h1>
+  
+  <div id="inputArea">
+    <label for="searchInput">アルファベットを入力:</label><br>
+    <input type="text" id="searchInput" placeholder="例: abc、hello、test">
+    <br>
+    <button id="executeBtn">実行</button>
+  </div>
+  
+  <div id="status"></div>
+
+  <div id="resultsContainer">
+    <div class="resultColumn">
+      <h3>上にずらす</h3>
+      <table id="upTable">
+        <thead>
+          <tr>
+            <th class="number-cell">No.</th>
+            <th>単語</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="resultColumn">
+      <h3>下にずらす</h3>
+      <table id="downTable">
+        <thead>
+          <tr>
+            <th class="number-cell">No.</th>
+            <th>単語</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+  <div>
+    <a href="index.html">一覧検索に戻る</a> | 
+    <a href="hiragana-shift.html">ひらがなずらしへ</a>
+  </div>
+
+  <script>
+    // CSVデータ格納用
+    let wordSet = new Set();
+
+    // ページ読み込み時
+    window.addEventListener('DOMContentLoaded', () => {
+      // CSV読み込み
+      fetch('日本語一覧new.csv')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('CSV を読み込めませんでした: ' + response.status);
+          }
+          return response.text();
+        })
+        .then(text => {
+          wordSet = parseCSV(text);
+          document.getElementById('status').textContent = 
+            `辞書読み込み完了: ${wordSet.size}単語`;
+        })
+        .catch(err => {
+          document.getElementById('status').textContent = 
+            '辞書読み込みエラー: ' + err.message;
+        });
+
+      document.getElementById('executeBtn').addEventListener('click', onExecute);
+      document.getElementById('searchInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') onExecute();
+      });
+    });
+
+    // CSVパーサ（単語をSetに格納）
+    function parseCSV(text) {
+      const lines = text.trim().split(/\r?\n/);
+      const words = new Set();
+      
+      if (lines.length < 2) return words;
+
+      // 先頭行はヘッダ: 単語,出現回数 を想定
+      const header = lines[0].split(',');
+      const wordIndex = header.indexOf('単語');
+
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const cols = lines[i].split(',');
+        const word = cols[wordIndex] || '';
+        if (word) {
+          words.add(word);
+        }
+      }
+      
+      return words;
+    }
+
+    // 実行ボタン押下時
+    function onExecute() {
+      const input = document.getElementById('searchInput').value.trim();
+      const upTbody = document.querySelector('#upTable tbody');
+      const downTbody = document.querySelector('#downTable tbody');
+      upTbody.innerHTML = '';
+      downTbody.innerHTML = '';
+
+      if (!input) {
+        document.getElementById('status').textContent = 
+          `辞書読み込み完了: ${wordSet.size}単語`;
+        return;
+      }
+
+      // 全文字が半角アルファベットかチェック
+      if (!/^[a-z]+$/i.test(input)) {
+        document.getElementById('status').textContent = '半角アルファベットのみ入力してください';
+        return;
+      }
+
+      // 小文字に統一
+      const lowerInput = input.toLowerCase();
+
+      const upResults = generateShiftedWords(lowerInput, -1); // 上にずらす（マイナス）
+      const downResults = generateShiftedWords(lowerInput, 1); // 下にずらす（プラス）
+      
+      const upExists = upResults.filter(w => wordSet.has(w)).length;
+      const downExists = downResults.filter(w => wordSet.has(w)).length;
+      
+      document.getElementById('status').textContent = 
+        `結果: 上${upResults.length}件(${upExists}存在) / 下${downResults.length}件(${downExists}存在)`;
+      
+      displayResults(upResults, upTbody, true); // 逆順表示
+      displayResults(downResults, downTbody, false); // 通常順
+    }
+
+    // ずらした単語を生成（direction: -1=上, 1=下）
+    function generateShiftedWords(original, direction) {
+      const results = [];
+      
+      for (let shift = 1; shift <= 25; shift++) {
+        let shifted = '';
+        let canContinue = true;
+
+        for (let i = 0; i < original.length; i++) {
+          const nextChar = shiftAlphabet(original[i], shift * direction);
+          if (nextChar === null) {
+            canContinue = false;
+            break;
+          }
+          shifted += nextChar;
+        }
+
+        if (!canContinue) {
+          break; // どれか1文字でもずらせなくなったら終了
+        }
+
+        results.push(shifted);
+      }
+      
+      return results;
+    }
+
+    // 単一アルファベットを指定数ずらす
+    function shiftAlphabet(char, shift) {
+      const charCode = char.charCodeAt(0);
+      const newCharCode = charCode + shift;
+      
+      // a(97) より小さい、またはz(122)より大きい場合はnull
+      if (newCharCode < 97 || newCharCode > 122) {
+        return null;
+      }
+      
+      return String.fromCharCode(newCharCode);
+    }
+
+    function displayResults(results, tbody, reverse = false) {
+      tbody.innerHTML = '';
+      
+      // 逆順の場合は配列を反転
+      const displayArray = reverse ? [...results].reverse() : results;
+      
+      for (let i = 0; i < displayArray.length; i++) {
+        const word = displayArray[i];
+        const tr = document.createElement('tr');
+        
+        // 番号列（逆順の場合は大きい番号から）
+        const tdNumber = document.createElement('td');
+        tdNumber.textContent = reverse ? results.length - i : i + 1;
+        tdNumber.classList.add('number-cell');
+        tr.appendChild(tdNumber);
+        
+        // 単語列
+        const tdWord = document.createElement('td');
+        tdWord.textContent = word;
+        
+        // 辞書に存在する場合は緑色背景
+        if (wordSet.has(word)) {
+          tdWord.classList.add('exists');
+        }
+        
+        tr.appendChild(tdWord);
+        tbody.appendChild(tr);
+      }
+    }
+  </script>
+</body>
+</html>
