@@ -140,7 +140,7 @@
   
   <div id="inputArea">
     <label for="searchInput">ひらがなを入力:</label><br>
-    <input type="text" id="searchInput" placeholder="例: かがみ、はば、ちゃ">
+    <input type="text" id="searchInput" placeholder="例: かがみ、はば、えーる">
     <br>
     <button id="executeBtn">実行</button>
   </div>
@@ -285,9 +285,9 @@
         return;
       }
 
-      // 全文字がひらがなかチェック
-      if (!/^[あ-ん゛゜ぁぃぅぇぉゃゅょゎっ]+$/.test(input)) {
-        document.getElementById('status').textContent = 'ひらがなのみ入力してください';
+      // 全文字がひらがな・長音記号かチェック
+      if (!/^[あ-ん゛゜ぁぃぅぇぉゃゅょゎっー]+$/.test(input)) {
+        document.getElementById('status').textContent = 'ひらがな・ーのみ入力してください';
         return;
       }
 
@@ -313,6 +313,12 @@
         let canContinue = true;
 
         for (let i = 0; i < original.length; i++) {
+          // 長音記号「ー」はそのまま
+          if (original[i] === 'ー') {
+            shifted += 'ー';
+            continue;
+          }
+
           const nextChar = shiftHiragana(original[i], shift * direction);
           if (nextChar === null) {
             canContinue = false;
