@@ -163,7 +163,7 @@ grid.appendChild(input);
 
 async function loadCSV() {
 try {
-const res = await fetch('日本語一覧.csv');
+const res = await fetch('日本語一覧new.csv');
 if (!res.ok) throw new Error();
 const text = await res.text();
 processWords(parseCSV(text));
@@ -405,3 +405,4 @@ console.log(message);
 </script>
 </body>
 </html>
+
