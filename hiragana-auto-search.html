@@ -251,15 +251,27 @@
       }, 100);
     }
 
-    // マッチする単語ペアを検索
+    // マッチする単語ペアを検索（最適化版）
     function findMatches(length) {
       const words = wordsByLength[length];
       const results = [];
+      const processed = new Set(); // 既に処理された単語を記録
 
-      for (let i = 0; i < words.length - 1; i++) {
+      for (let i = 0; i < words.length; i++) {
+        // 既に処理済みの単語はスキップ
+        if (processed.has(words[i])) {
+          continue;
+        }
+
         const matchGroup = [{word: words[i], shift: 0, base: words[i]}];
+        processed.add(words[i]); // 基準単語を処理済みに追加
         
         for (let j = i + 1; j < words.length; j++) {
+          // 既に処理済みの単語はスキップ
+          if (processed.has(words[j])) {
+            continue;
+          }
+
           const shiftAmount = canShift(words[i], words[j]);
           if (shiftAmount !== null) {
             matchGroup.push({
@@ -267,6 +279,7 @@
               shift: shiftAmount, 
               base: words[i]
             });
+            processed.add(words[j]); // マッチした単語を処理済みに追加
           }
         }
 
