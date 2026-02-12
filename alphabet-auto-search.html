@@ -94,6 +94,20 @@
       margin-left: 20px;
     }
 
+    .word-item {
+      margin: 3px 0;
+      padding: 5px;
+      background: white;
+      border-left: 3px solid #007AFF;
+      padding-left: 10px;
+    }
+
+    .shift-info {
+      color: #666;
+      font-size: 14px;
+      margin-left: 10px;
+    }
+
     @media (min-width: 768px) {
       body {
         margin: 20px;
@@ -227,11 +241,16 @@
       const results = [];
 
       for (let i = 0; i < words.length - 1; i++) {
-        const matchGroup = [words[i]];
+        const matchGroup = [{word: words[i], shift: 0, base: words[i]}];
         
         for (let j = i + 1; j < words.length; j++) {
-          if (canShift(words[i], words[j])) {
-            matchGroup.push(words[j]);
+          const shiftAmount = canShift(words[i], words[j]);
+          if (shiftAmount !== null) {
+            matchGroup.push({
+              word: words[j], 
+              shift: shiftAmount, 
+              base: words[i]
+            });
           }
         }
 
@@ -243,21 +262,21 @@
       return results;
     }
 
-    // 2つの単語がずらしで一致するか判定
+    // 2つの単語がずらしで一致するか判定し、シフト量を返す
     function canShift(word1, word2) {
-      if (word1.length !== word2.length) return false;
+      if (word1.length !== word2.length) return null;
 
       // 各シフト量をテスト
       for (let shift = 1; shift <= 25; shift++) {
         if (shiftWord(word1, shift) === word2) {
-          return true;
+          return shift;
         }
         if (shiftWord(word1, -shift) === word2) {
-          return true;
+          return -shift;
         }
       }
 
-      return false;
+      return null;
     }
 
     // 単語全体をシフト
@@ -293,9 +312,22 @@
         html += `<div class="match-group">`;
         html += `<div class="match-title">グループ ${i + 1} (${group.length}単語)</div>`;
         html += `<div class="match-list">`;
-        for (const word of group) {
-          html += `${word}<br>`;
+        
+        for (const item of group) {
+          html += `<div class="word-item">`;
+          html += `<strong>${item.word}</strong>`;
+          
+          if (item.shift !== 0) {
+            const direction = item.shift > 0 ? '下' : '上';
+            const amount = Math.abs(item.shift);
+            html += `<span class="shift-info">← ${item.base} から${direction}に${amount}ずらし</span>`;
+          } else {
+            html += `<span class="shift-info">(基準単語)</span>`;
+          }
+          
+          html += `</div>`;
         }
+        
         html += `</div></div>`;
       }
 
