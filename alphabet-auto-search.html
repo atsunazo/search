@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>アルファベットずらし自動検索</title>
+  <style>
+    body { 
+      font-family: sans-serif; 
+      margin: 10px;
+      background-color: #fff;
+    }
+    
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    #status {
+      margin: 10px 0;
+      font-weight: bold;
+      color: #333;
+    }
+
+    #buttonContainer {
+      margin: 20px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .lengthButton {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #007AFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .lengthButton:hover {
+      background: #0056CC;
+    }
+
+    .lengthButton:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    #resultContainer {
+      margin-top: 20px;
+    }
+
+    #resultTitle {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    table { 
+      border-collapse: collapse; 
+      margin-top: 10px; 
+      width: 100%;
+    }
+
+    th, td { 
+      border: 1px solid #ccc; 
+      padding: 8px;
+      text-align: left;
+      word-break: break-all;
+    }
+
+    th { 
+      background: #f0f0f0;
+      font-weight: bold;
+    }
+
+    .match-group {
+      margin-bottom: 20px;
+      padding: 10px;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    .match-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #007AFF;
+    }
+
+    .match-list {
+      margin-left: 20px;
+    }
+
+    @media (min-width: 768px) {
+      body {
+        margin: 20px;
+      }
+    }
+  </style>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="アルファベット自動検索">
+</head>
+<body>
+  <h1>アルファベットずらし自動検索</h1>
+  
+  <div id="status">CSVを読み込んでいます...</div>
+
+  <div id="buttonContainer"></div>
+
+  <div id="resultContainer">
+    <div id="resultTitle"></div>
+    <div id="resultContent"></div>
+  </div>
+
+  <hr>
+  <div>
+    <a href="index.html">一覧検索に戻る</a> | 
+    <a href="alphabet-shift.html">アルファベットずらしへ</a>
+  </div>
+
+  <script>
+    let wordsByLength = {}; // 文字数ごとに単語を格納
+    let allWords = [];
+
+    // ページ読み込み時
+    window.addEventListener('DOMContentLoaded', () => {
+      fetch('alphabet.csv')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('CSV を読み込めませんでした: ' + response.status);
+          }
+          return response.text();
+        })
+        .then(text => {
+          parseCSV(text);
+          createButtons();
+        })
+        .catch(err => {
+          document.getElementById('status').textContent = 
+            '読み込みエラー: ' + err.message;
+        });
+    });
+
+    // CSVパーサ
+    function parseCSV(text) {
+      const lines = text.trim().split(/\r?\n/);
+      
+      if (lines.length < 2) {
+        document.getElementById('status').textContent = 'CSVが空です';
+        return;
+      }
+
+      // ヘッダを確認（単語列を探す）
+      const header = lines[0].split(',');
+      const wordIndex = header.findIndex(h => 
+        h.trim().toLowerCase() === '単語' || 
+        h.trim().toLowerCase() === 'word'
+      );
+
+      if (wordIndex === -1) {
+        document.getElementById('status').textContent = 
+          'CSV に「単語」列が見つかりません';
+        return;
+      }
+
+      // 単語を抽出して文字数ごとに分類
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const cols = lines[i].split(',');
+        const word = cols[wordIndex] ? cols[wordIndex].trim().toLowerCase() : '';
+        
+        if (word && /^[a-z]+$/.test(word)) {
+          allWords.push(word);
+          const length = word.length;
+          if (!wordsByLength[length]) {
+            wordsByLength[length] = [];
+          }
+          wordsByLength[length].push(word);
+        }
+      }
+
+      document.getElementById('status').textContent = 
+        `読み込み完了: 全${allWords.length}単語`;
+    }
+
+    // ボタンを作成
+    function createButtons() {
+      const container = document.getElementById('buttonContainer');
+      const lengths = Object.keys(wordsByLength).map(Number).sort((a, b) => a - b);
+
+      if (lengths.length === 0) {
+        container.innerHTML = '<p>単語が見つかりませんでした</p>';
+        return;
+      }
+
+      for (const length of lengths) {
+        const count = wordsByLength[length].length;
+        const button = document.createElement('button');
+        button.className = 'lengthButton';
+        button.textContent = `${length}文字 (${count}単語)`;
+        button.addEventListener('click', () => searchByLength(length));
+        container.appendChild(button);
+      }
+    }
+
+    // 指定文字数の検索を実行
+    function searchByLength(length) {
+      document.getElementById('resultTitle').textContent = 
+        `${length}文字の検索結果`;
+      document.getElementById('resultContent').innerHTML = 
+        '<p>検索中...</p>';
+
+      // 非同期で検索実行（画面フリーズ防止）
+      setTimeout(() => {
+        const matches = findMatches(length);
+        displayResults(matches, length);
+      }, 100);
+    }
+
+    // マッチする単語ペアを検索
+    function findMatches(length) {
+      const words = wordsByLength[length];
+      const results = [];
+
+      for (let i = 0; i < words.length - 1; i++) {
+        const matchGroup = [words[i]];
+        
+        for (let j = i + 1; j < words.length; j++) {
+          if (canShift(words[i], words[j])) {
+            matchGroup.push(words[j]);
+          }
+        }
+
+        if (matchGroup.length > 1) {
+          results.push(matchGroup);
+        }
+      }
+
+      return results;
+    }
+
+    // 2つの単語がずらしで一致するか判定
+    function canShift(word1, word2) {
+      if (word1.length !== word2.length) return false;
+
+      // 各シフト量をテスト
+      for (let shift = 1; shift <= 25; shift++) {
+        if (shiftWord(word1, shift) === word2) {
+          return true;
+        }
+        if (shiftWord(word1, -shift) === word2) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    // 単語全体をシフト
+    function shiftWord(word, shift) {
+      let result = '';
+      for (let i = 0; i < word.length; i++) {
+        const charCode = word.charCodeAt(i);
+        let newCharCode = charCode + shift;
+        
+        // a-z の範囲内に収める（循環）
+        while (newCharCode > 122) newCharCode -= 26;
+        while (newCharCode < 97) newCharCode += 26;
+        
+        result += String.fromCharCode(newCharCode);
+      }
+      return result;
+    }
+
+    // 結果を表示
+    function displayResults(matches, length) {
+      const container = document.getElementById('resultContent');
+      
+      if (matches.length === 0) {
+        container.innerHTML = 
+          `<p>${length}文字の単語で一致するペアは見つかりませんでした。</p>`;
+        return;
+      }
+
+      let html = `<p>マッチ数: ${matches.length}グループ</p>`;
+      
+      for (let i = 0; i < matches.length; i++) {
+        const group = matches[i];
+        html += `<div class="match-group">`;
+        html += `<div class="match-title">グループ ${i + 1} (${group.length}単語)</div>`;
+        html += `<div class="match-list">`;
+        for (const word of group) {
+          html += `${word}<br>`;
+        }
+        html += `</div></div>`;
+      }
+
+      container.innerHTML = html;
+    }
+  </script>
+</body>
+</html>
