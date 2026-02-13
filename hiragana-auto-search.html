@@ -296,7 +296,7 @@
       if (word1.length !== word2.length) return null;
 
       // 各シフト量をテスト（-15〜+15）
-      for (let shift = 1; shift <= 15; shift++) {
+      for (let shift = 16; shift <= 30; shift++) {
         if (shiftWord(word1, shift) === word2) {
           return shift;
         }
