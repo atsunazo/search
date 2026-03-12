@@ -1,313 +1,361 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <!-- ここを追加：スマホの画面幅に合わせる・入力時のズームを防ぐ -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>日本語一覧 検索</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>3x3 スクラッチゲーム</title>
   <style>
-    /* bodyの余白調整 */
-    body { 
-      font-family: sans-serif; 
-      margin: 10px; /* スマホ向けに余白を少し縮小 */
-      background-color: #fff;
-    }
-    
-    /* 入力欄のスタイル調整 */
-    input[type="text"] { 
-      /* width: 300px;  <- 元の固定幅を削除し、下で100%にします */
-      font-size: 16px; /* 16px以上にするとスマホでズームされません */
-      padding: 8px;    /* タップしやすいように少し広げる */
-      box-sizing: border-box; /* 枠線を含めて幅を計算 */
+    :root{
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --line: #d8deea;
+      --text: #1f2937;
+      --sub: #6b7280;
+      --accent: #2563eb;
+      --shadow: 0 10px 30px rgba(0,0,0,.08);
+      --radius: 18px;
     }
 
-    table { 
-      border-collapse: collapse; 
-      margin-top: 10px; 
-      width: 100%; /* 表を画面幅いっぱいに */
+    * { box-sizing: border-box; }
+
+    body{
+      margin:0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans",
+                   "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background: linear-gradient(180deg, #eef4ff 0%, var(--bg) 100%);
+      color: var(--text);
     }
 
-    th, td { 
-      border: 1px solid #ccc; 
-      padding: 8px; /* スマホで押しやすい広さに */
-      cursor: pointer; 
+    .wrap{
+      width: min(96vw, 820px);
+      margin: 16px auto 28px;
+      padding: 14px;
+    }
+
+    .panel{
+      background: var(--card);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    h1{
+      margin: 0 0 8px;
+      font-size: clamp(20px, 4vw, 32px);
+      line-height: 1.3;
+    }
+
+    .desc{
+      margin: 0 0 12px;
+      color: var(--sub);
+      font-size: clamp(13px, 2.8vw, 16px);
+      line-height: 1.6;
+    }
+
+    .toolbar{
+      display:flex;
+      gap:10px;
+      flex-wrap: wrap;
+      align-items:center;
+      margin-bottom: 14px;
+    }
+
+    button{
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-size: 15px;
+      font-weight: 700;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      min-height: 44px;
+    }
+
+    .hint{
+      color: var(--sub);
+      font-size: 14px;
+    }
+
+    .board{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 100%;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .cell{
+      position: relative;
+      aspect-ratio: 1 / 1;
+      border: 2px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: #e5e7eb;
       user-select: none;
-      word-break: break-all; /* 長い文字が画面からはみ出ないように */
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
 
-    th { background: #f0f0f0; }
-    th.asc::after { content: " ↑"; }
-    th.desc::after { content: " ↓"; }
-
-    td:hover {
-      background-color: #e3f2fd;
+    .cell img{
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display:block;
+      pointer-events: none;
     }
 
-    /* ID指定のスタイル（こちらのほうが優先度が高いためここで幅を上書き） */
-    #searchInput {
-      font-size: 16px; /* 1emだと小さすぎてズームされることがあるため16px固定 */
-      width: 100%;     /* 30% -> 100% に変更してスマホで入力しやすく */
-      padding: 0.8em;
-      height: 44px;    /* 指でタップしやすい高さ */
-      box-sizing: border-box;
-      margin-bottom: 10px; /* 下に少し隙間を開ける */
+    .cell canvas{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      display:block;
+      touch-action: none;
+      cursor: crosshair;
     }
 
-    /* PC用の設定（768px以上の画面幅） */
-    @media (min-width: 768px) {
-      body {
-        margin: 20px;
-      }
+    .label{
+      position:absolute;
+      left:8px;
+      bottom:8px;
+      z-index: 2;
+      background: rgba(0,0,0,.52);
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      pointer-events: none;
+    }
 
-      #searchInput {
-        font-size: 1em;
-        width: 30%;
-        padding: 0.8em;
-        height: 40px;
-      }
+    .done{
+      outline: 3px solid rgba(37,99,235,.18);
+      border-color: #93c5fd;
+    }
 
-      input[type="text"] {
-        width: 30%;
-        font-size: 16px;
-        padding: 4px;
-      }
+    .footer-note{
+      margin-top: 12px;
+      color: var(--sub);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 520px){
+      .wrap{ width: 100vw; padding: 10px; }
+      .panel{ padding: 12px; border-radius: 18px; }
+      .board{ gap: 8px; }
+      .cell{ border-radius: 14px; }
+      .label{ font-size: 11px; padding: 4px 7px; }
     }
   </style>
-  <!-- アプリっぽく表示する設定 -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="日本語検索">
 </head>
 <body>
-  <h1>日本語一覧 検索</h1>
+  <div class="wrap">
+    <div class="panel">
+      <h1>3×3 スクラッチゲーム</h1>
+      <p class="desc">
+        各マスを指でこすると、丸いスクラッチ層が削れて下の画像が見えるサンプルです。
+        スマホ・タブレットで見やすいサイズにしてあります。
+      </p>
 
-  <div>
-    <label for="searchInput">検索:</label>
-    <input type="text" id="searchInput" placeholder="例: り、ご, り＊ご, 1い1, か111き, 0き*た">
+      <div class="toolbar">
+        <button id="resetBtn" type="button">全部リセット</button>
+        <span class="hint">削れた割合が60%以上になると、そのマスを自動で全開放します。</span>
+      </div>
+
+      <div class="board" id="board"></div>
+
+      <p class="footer-note">
+        画像はサンプル表示です。本番ではお好きな画像URLや当選画像、キャラクター画像に差し替えて使えます。
+      </p>
+    </div>
   </div>
-  <h5>任意一文字「＊、*0」、同じ文字指定1～9</h5>
-  <div id="status"></div>
-
-  <table id="resultTable">
-    <thead>
-      <tr>
-        <th data-sort="word">単語（クリックで検索）</th>
-        <th data-sort="count">出現回数</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
 
   <script>
-    // CSV データ格納用
-    let wordData = [];
-    let currentResults = []; // 検索結果を保持
-    let sortColumn = null;
-    let sortDirection = 'asc';
+    const imageList = [
+      "https://picsum.photos/id/1015/600/600",
+      "https://picsum.photos/id/1025/600/600",
+      "https://picsum.photos/id/1035/600/600",
+      "https://picsum.photos/id/1043/600/600",
+      "https://picsum.photos/id/1050/600/600",
+      "https://picsum.photos/id/1062/600/600",
+      "https://picsum.photos/id/1074/600/600",
+      "https://picsum.photos/id/1084/600/600",
+      "https://picsum.photos/id/109/600/600"
+    ];
 
-    // ページ読み込み時に CSV を読み込む
-    window.addEventListener('DOMContentLoaded', () => {
-      // 同じフォルダ内の「日本語一覧.csv」を取得
-      fetch('日本語一覧new.csv')
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('CSV を読み込めませんでした: ' + response.status);
+    const board = document.getElementById("board");
+    const resetBtn = document.getElementById("resetBtn");
+    const cells = [];
+
+    function createCell(index, imageUrl){
+      const cell = document.createElement("div");
+      cell.className = "cell";
+
+      const img = document.createElement("img");
+      img.src = imageUrl;
+      img.alt = `マス ${index + 1}`;
+
+      const label = document.createElement("div");
+      label.className = "label";
+      label.textContent = `${index + 1}`;
+
+      const canvas = document.createElement("canvas");
+      cell.appendChild(img);
+      cell.appendChild(label);
+      cell.appendChild(canvas);
+      board.appendChild(cell);
+
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+      const state = {
+        cell,
+        canvas,
+        ctx,
+        isDrawing: false,
+        revealed: false,
+        brushRadius: 20
+      };
+
+      function resizeCanvas(){
+        const rect = cell.getBoundingClientRect();
+        const dpr = Math.max(window.devicePixelRatio || 1, 1);
+
+        canvas.width = Math.floor(rect.width * dpr);
+        canvas.height = Math.floor(rect.height * dpr);
+        canvas.style.width = rect.width + "px";
+        canvas.style.height = rect.height + "px";
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+
+        drawCover(rect.width, rect.height);
+      }
+
+      function drawCover(w, h){
+        state.revealed = false;
+        state.cell.classList.remove("done");
+
+        ctx.clearRect(0, 0, w, h);
+
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, "#cbd5e1");
+        grad.addColorStop(0.5, "#94a3b8");
+        grad.addColorStop(1, "#64748b");
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        const dotGap = Math.max(18, w / 7);
+        const dotR = Math.max(5, w / 28);
+
+        ctx.fillStyle = "rgba(255,255,255,0.38)";
+        for(let y = dotGap / 2; y < h; y += dotGap){
+          for(let x = dotGap / 2; x < w; x += dotGap){
+            ctx.beginPath();
+            ctx.arc(x, y, dotR, 0, Math.PI * 2);
+            ctx.fill();
           }
-          return response.text();
-        })
-        .then(text => {
-          wordData = parseCSV(text);
-          document.getElementById('status').textContent = '単語数: ' + wordData.length;
-        })
-        .catch(err => {
-          document.getElementById('status').textContent = '読み込みエラー: ' + err.message;
-        });
+        }
 
-      document.getElementById('searchInput').addEventListener('input', onSearch);
-      
-      // ソート機能の初期化
-      document.querySelectorAll('th[data-sort]').forEach(th => {
-        th.addEventListener('click', onSort);
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.font = `bold ${Math.max(14, w * 0.08)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("SCRATCH", w / 2, h / 2);
+      }
+
+      function getPoint(e){
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        };
+      }
+
+      function scratch(x, y){
+        const w = canvas.clientWidth;
+        const h = canvas.clientHeight;
+
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(x, y, state.brushRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        const ratio = getRevealRatio(w, h);
+        if(ratio >= 0.6 && !state.revealed){
+          revealAll(w, h);
+        }
+      }
+
+      function getRevealRatio(w, h){
+        const step = 8;
+        const imageData = ctx.getImageData(0, 0, w, h).data;
+        let transparent = 0;
+        let total = 0;
+
+        for(let y = 0; y < h; y += step){
+          for(let x = 0; x < w; x += step){
+            const i = (y * w + x) * 4;
+            const alpha = imageData[i + 3];
+            total++;
+            if(alpha < 20) transparent++;
+          }
+        }
+        return transparent / total;
+      }
+
+      function revealAll(w, h){
+        state.revealed = true;
+        state.cell.classList.add("done");
+        ctx.clearRect(0, 0, w, h);
+      }
+
+      canvas.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        state.isDrawing = true;
+        canvas.setPointerCapture(e.pointerId);
+        const p = getPoint(e);
+        scratch(p.x, p.y);
       });
+
+      canvas.addEventListener("pointermove", (e) => {
+        if(!state.isDrawing) return;
+        e.preventDefault();
+        const p = getPoint(e);
+        scratch(p.x, p.y);
+      });
+
+      function endDraw(e){
+        state.isDrawing = false;
+        try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+      }
+
+      canvas.addEventListener("pointerup", endDraw);
+      canvas.addEventListener("pointercancel", endDraw);
+      canvas.addEventListener("pointerleave", endDraw);
+
+      state.resizeCanvas = resizeCanvas;
+      cells.push(state);
+      resizeCanvas();
+    }
+
+    imageList.forEach((url, index) => createCell(index, url));
+
+    let resizeTimer = null;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        cells.forEach(cell => cell.resizeCanvas());
+      }, 120);
     });
 
-    // 単純な CSV パーサ（カンマ区切り、ヘッダありを想定）
-    function parseCSV(text) {
-      const lines = text.trim().split(/\r?\n/);
-      if (lines.length < 2) return [];
-
-      // 先頭行はヘッダ: 単語,出現回数 を想定
-      const header = lines[0].split(',');
-      const wordIndex = header.indexOf('単語');
-      const countIndex = header.indexOf('出現回数');
-
-      const result = [];
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
-        const cols = lines[i].split(',');
-        const word = cols[wordIndex] || '';
-        const count = cols[countIndex] || '0';
-        result.push({ word, count: parseInt(count) || 0 });
-      }
-      return result;
-    }
-
-    // 検索入力時の処理
-    function onSearch() {
-      const query = document.getElementById('searchInput').value.trim();
-      const tbody = document.querySelector('#resultTable tbody');
-      tbody.innerHTML = '';
-
-      if (!query) {
-        currentResults = [];
-        updateSortIndicators();
-        return;
-      }
-
-      // ワイルドカード仕様:
-      // ・「＊」は任意1文字
-      // ・数字1〜9は任意1文字だが、同じ数字には同じ文字が入る
-      // ・他はひらがなとし、完全一致
-      currentResults = wordData.filter(item => matchPattern(item.word, query));
-      
-      // 現在のソート状態を維持してソート
-      if (sortColumn) {
-        sortResults(sortColumn, sortDirection);
-      }
-      
-      displayResults();
-    }
-
-    // ソート機能
-    function onSort(event) {
-      const column = event.currentTarget.dataset.sort;
-      if (sortColumn === column) {
-        // 同じ列をクリック：方向反転
-        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-      } else {
-        // 新しい列：昇順で開始
-        sortColumn = column;
-        sortDirection = 'asc';
-      }
-      
-      sortResults(sortColumn, sortDirection);
-      displayResults();
-      updateSortIndicators();
-    }
-
-    function sortResults(column, direction) {
-      currentResults.sort((a, b) => {
-        let aVal, bVal;
-        if (column === 'word') {
-          aVal = a.word;
-          bVal = b.word;
-        } else {
-          aVal = a.count;
-          bVal = b.count;
-        }
-        
-        if (aVal < bVal) return direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-
-    // Google検索を開く関数
-    function searchWord(word) {
-      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(word)}`;
-      window.open(searchUrl, '_blank');
-    }
-
-    function displayResults() {
-      const tbody = document.querySelector('#resultTable tbody');
-      tbody.innerHTML = '';
-      
-      for (const item of currentResults) {
-        const tr = document.createElement('tr');
-        const tdWord = document.createElement('td');
-        const tdCount = document.createElement('td');
-        tdWord.textContent = item.word;
-        tdCount.textContent = item.count;
-        
-        // 単語セルにクリックイベントを追加
-        tdWord.addEventListener('click', () => {
-          searchWord(item.word);
-        });
-        
-        tr.appendChild(tdWord);
-        tr.appendChild(tdCount);
-        tbody.appendChild(tr);
-      }
-    }
-
-    function updateSortIndicators() {
-      document.querySelectorAll('th').forEach(th => {
-        th.classList.remove('asc', 'desc');
-      });
-      
-      if (sortColumn) {
-        const activeTh = document.querySelector(`th[data-sort="${sortColumn}"]`);
-        if (activeTh) {
-          activeTh.classList.add(sortDirection);
-        }
-      }
-    }
-
-    // パターンマッチ:
-    // pattern: ひらがな＋「＊」＋数字1〜9 で構成
-    // word   : CSV の「単語」
-    function matchPattern(word, pattern) {
-      // 文字数が違う場合は即不一致
-      if (word.length !== pattern.length) return false;
-
-      // 数字ごとに「どの文字に対応したか」を記録するマップ
-      const digitMap = {}; // 例: { '1': 'か', '2': 'し' }
-
-      for (let i = 0; i < pattern.length; i++) {
-        const p = pattern[i];
-        const w = word[i];
-
-        if (p === '＊'|| p === '0'|| p === '*'|| p === '、') {
-          // 任意1文字にマッチ
-          continue;
-        }
-
-        if (p >= '1' && p <= '9') {
-          // 数字の場合：同じ数字には同じ文字が入る
-          if (digitMap[p] === undefined) {
-            // まだ割り当てられていなければこの文字を割り当て
-            digitMap[p] = w;
-          } else {
-            // すでに割り当てがあり、それと違う文字なら不一致
-            if (digitMap[p] !== w) {
-              return false;
-            }
-          }
-          continue;
-        }
-
-        // ひらがななど、通常の完全一致
-        if (p !== w) {
-          return false;
-        }
-      }
-      return true;
-    }
+    resetBtn.addEventListener("click", () => {
+      cells.forEach(cell => cell.resizeCanvas());
+    });
   </script>
-
-  <hr>
-  <div>
-    <a href="grid.html">5x5グリッド検索へ移動</a><br>
-    <a href="slide.html">ひらがなスライドへ移動</a><br>
-    <a href="hiragana-auto-search.html">ひらがなスライド自動へ移動</a><br>
-    <a href="alphabet-shift.html">アルファベットスライドへ移動</a><br>
-    <a href="alphabet-auto-search.html">アルファベットスライド自動へ移動</a>
-
-    
-
-    
-  </div>
 </body>
 </html>
-
-
